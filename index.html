@@ -5,127 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>就是爱你爱着你学习系统</title>
     <style>
+        /* 基础样式重置 */
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            background: url('cover.jpg') no-repeat center center fixed;
+            /* 使用你要求的背景图 bg1.jpg */
+            background: url('bg1.jpg') no-repeat center center fixed;
             background-size: cover;
-            font-family: "Microsoft YaHei", sans-serif;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
             color: white;
-            overflow: hidden; /* 防止出现滚动条 */
+            overflow-x: hidden; /* 防止横向溢出 */
         }
 
+        /* 标题样式 */
         h1 {
             text-align: center;
             margin-top: 40px;
-            font-size: 45px;
+            font-size: clamp(28px, 5vw, 45px); /* 字体大小随屏幕缩放 */
             text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
             letter-spacing: 2px;
+            padding: 0 10px;
         }
 
-        /* 主容器：控制列与列之间的间距 */
+        /* 主容器：响应式布局 */
         .center-links {
             flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 80px; /* 列与列的大间距 */
+            gap: 60px; /* 列间距 */
+            padding: 20px;
+            flex-wrap: wrap; /* 屏幕太窄时自动换行 */
         }
 
-        /* 每一列的容器：控制按钮上下垂直排布 */
+        /* 每一列的容器 */
         .link-column {
             display: flex;
             flex-direction: column;
-            gap: 25px; /* 按钮之间的垂直间距 */
-            perspective: 1000px;
+            gap: 20px; /* 按钮间距 */
+            min-width: 260px;
         }
 
         /* 基础按钮样式 */
         .center-links a {
             text-decoration: none;
-            padding: 18px 45px;
-            font-size: 24px;
+            padding: 16px 30px;
+            font-size: 20px;
             font-weight: bold;
             color: white;
             border-radius: 15px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             text-align: center;
-            min-width: 200px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            backdrop-filter: blur(5px);
-            border: 2px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px); /* 毛玻璃效果 */
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* 分组颜色 1: 视频类（蓝色系） */
+        /* 视频类颜色（蓝色系） */
         .btn-video {
-            background-color: rgba(30, 64, 175, 0.7); /* 深蓝色 */
+            background-color: rgba(30, 64, 175, 0.6);
         }
 
-        /* 分组颜色 2: 练习类（橙色系） */
+        /* 练习类颜色（橙色系） */
         .btn-homework {
-            background-color: rgba(234, 88, 12, 0.7); /* 橙红色 */
+            background-color: rgba(234, 88, 12, 0.6);
         }
 
-        /* 悬停效果：变色并放大 */
+        /* 悬停交互效果 */
         .center-links a:hover {
             background-color: rgba(255, 255, 255, 0.95);
             color: #1a1a1a;
-            transform: scale(1.1) translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transform: scale(1.08) translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
             border-color: white;
         }
 
+        /* 底部留言区 */
         .footer {
             text-align: center;
-            margin-bottom: 40px;
+            padding: 30px 20px;
         }
 
-        .footer textarea {
-            width: 50%;
-            height: 80px;
-            font-size: 20px;
-            font-weight: bold;
-            border-radius: 12px;
-            padding: 15px;
-            resize: none;
+        .info-box {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
             background: rgba(255, 255, 255, 0.2);
-            color: white;
+            backdrop-filter: blur(15px);
             border: 2px solid rgba(255, 255, 255, 0.3);
-            text-align: center;
-            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1.6;
+            color: white;
+            white-space: pre-line; /* 保留换行 */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* 针对手机端的特殊优化 */
+        @media (max-width: 600px) {
+            .center-links {
+                gap: 30px;
+                flex-direction: column;
+            }
+            .link-column {
+                width: 90%;
+            }
+            h1 {
+                margin-top: 20px;
+            }
         }
     </style>
 </head>
 
 <body>
 
-<h1>就是爱你爱着你学习系统</h1>
+    <h1>就是爱你爱着你学习系统</h1>
 
-<div class="center-links">
-    <div class="link-column">
-        <a href="ytb1.html" class="btn-video">📺 视频学习一</a> 
-        <a href="hw1.html" class="btn-homework">✍️ 练习一</a>
-		<a href="hw2.html" class="btn-homework">✍️ 练习二</a>
+    <div class="center-links">
+        <div class="link-column">
+            <a href="ytb1.html" class="btn-video">📺 视频学习一</a> 
+            <a href="hw1.html" class="btn-homework">✍️ 练习一</a>
+            <a href="hw2.html" class="btn-homework">✍️ 练习二</a>
+        </div>
+
+        <div class="link-column">
+            <a href="ytb_e1.html" class="btn-video">📺 《鹅》视频学习 1</a> 
+            <a href="ytb_e2.html" class="btn-video">📺 《鹅》视频学习 2</a> 
+            <a href="hw_e1.html" class="btn-homework">✍️ 《鹅》练习一</a>
+            <a href="hw_e2.html" class="btn-homework">✍️ 《鹅》练习二</a>
+            <a href="hw_e3.html" class="btn-homework">📖 《鹅》练习三</a>
+        </div>
     </div>
 
-    <div class="link-column">
-        <a href="ytb_e1.html" class="btn-video">📺 《鹅》视频学习 1</a> 
-		<a href="ytb_e2.html" class="btn-video">📺 《鹅》视频学习 2</a> 
-        <a href="hw_e1.html" class="btn-homework">✍️ 《鹅》练习一</a>
-		<a href="hw_e2.html" class="btn-homework">✍️ 《鹅》练习二</a>
-		<a href="hw_e3.html" class="btn-homework">📖 《鹅》练习三</a>
+    <div class="footer">
+        <div class="info-box">
+            好好学习，天天向上！
+            老师爱你们哟 ❤️
+            （*＾-＾*）
+        </div>
     </div>
-
-    </div>
-
-<div class="footer">
-    <textarea readonly>好好学习，天天向上！
-老师爱你们哟 ❤️
-（*＾-＾*）</textarea>
-</div>
 
 </body>
 </html>
