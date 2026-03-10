@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>练习_1-2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-image: url('bg1.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        .word-card {
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        /* 错误时正确答案移到中央并放大 */
+        .highlight-center {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) scale(2.8) !important;
+            z-index: 1000;
+            background-color: #fef08a !important; /* 明亮黄 */
+            border-color: #eab308 !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+        .melt-out {
+            opacity: 0;
+            transform: scale(0) rotate(15deg);
+        }
+        .hidden { display: none; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .shake-red { 
+            animation: shake 0.3s ease-in-out; 
+            background-color: #fecaca !important; 
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div id="login-overlay" class="fixed inset-0 z-[1100] flex items-center justify-center bg-black bg-opacity-80">
+        <div class="glass-morphism p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border-t-8 border-blue-500">
+            <h2 class="text-4xl font-black text-blue-900 mb-4">练习_1-2</h2>
+            <p class="text-gray-500 mb-8 font-bold text-lg">请输入姓名开始挑战</p>
+            <input type="text" id="student-name" class="w-full p-5 border-4 border-blue-100 rounded-2xl mb-8 text-center text-3xl font-bold outline-none focus:border-blue-400 transition-all" placeholder="输入姓名">
+            <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl text-2xl shadow-xl active:scale-95 transition-all">进入系统 (Login)</button>
+        </div>
+    </div>
+
+    <div class="text-center mb-6 glass-morphism p-6 rounded-3xl shadow-lg w-full max-w-3xl relative z-10 border-4 border-white">
+        <h1 class="text-4xl font-black text-blue-900 mb-2">练习_1-2</h1>
+        <p id="instruction-text" class="text-xl text-gray-700 font-bold">根据听到的读音选择对应的汉字或词语。请先熟悉选项后点击开始</p>
+    </div>
+
+    <div id="game-area" class="hidden w-full max-w-6xl flex flex-col items-center">
+        <div class="flex justify-between w-full mb-8 px-6 items-center">
+            <div id="timer" class="text-4xl font-black text-red-600 bg-white px-8 py-3 rounded-full shadow-xl border-4 border-red-50 min-w-[120px] text-center italic">10s</div>
+            
+            <button id="start-game-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-16 py-4 rounded-full font-black text-3xl shadow-2xl animate-pulse transform transition hover:scale-105">
+                准备好了，开始！ (Start)
+            </button>
+
+            <button id="replay-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full font-black text-xl shadow-lg flex items-center">
+                <span class="mr-2">🔊</span> 重播
+            </button>
+        </div>
+
+        <div id="card-container" class="grid grid-cols-3 md:grid-cols-5 gap-6 w-full p-4 relative min-h-[500px]">
+            </div>
+    </div>
+
+    <div id="review-container" class="hidden glass-morphism p-12 rounded-[4rem] shadow-2xl w-full max-w-3xl text-center mt-6 border-8 border-red-50">
+        <h2 class="text-3xl font-black text-red-600 mb-8 underline decoration-wavy">错题回顾 Review</h2>
+        <div id="review-word" class="text-[12rem] font-black text-blue-900 mb-10 drop-shadow-lg"></div>
+        <button id="next-review-btn" class="bg-green-500 hover:bg-green-600 text-white px-16 py-6 rounded-3xl text-3xl font-black shadow-2xl">下一个 (Next)</button>
+    </div>
+
+    <div id="success-container" class="hidden text-center mt-10 glass-morphism p-12 rounded-[5rem] border-8 border-yellow-400 max-w-2xl shadow-2xl">
+        <div class="text-[12rem] mb-6 animate-bounce">🏆</div>
+        <h2 class="text-6xl font-black text-orange-600 mb-6">挑战完成！</h2>
+        <p id="final-report" class="text-2xl font-bold mb-10 text-gray-700"></p>
+        <div class="flex flex-col gap-4 items-center">
+            <div class="bg-green-100 text-green-700 px-8 py-3 rounded-full font-black border-2 border-green-500 mb-4">✅ 数据已自动同步至老师后台</div>
+            <a href="index.html" class="bg-gray-800 hover:bg-black text-white px-16 py-5 rounded-3xl text-2xl font-black shadow-2xl transition-all">🏠 回主页</a>
+        </div>
+    </div>
+
+    <audio id="snd-melt" src="melt.mp3"></audio>
+    <audio id="snd-wrong" src="wrong.mp3"></audio>
+    <audio id="snd-cheer" src="cheer.mp3"></audio>
+
+    <script>
+        // ================= 配置区 =================
+        const config = {
+            vocabulary: ["对","云","雨","风","花","鸟","虫","中","树","鸡","去","山"],
+            googleFormURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse",
+            entryIDs: {
+                title: "entry.24104562",
+                name: "entry.178626966",
+                errors: "entry.1112503934",
+                time: "entry.1751911239"
+            }
+        };
+
+        let userName = "";
+        let remainingWords = [];
+        let currentTarget = "";
+        let timer = 10;
+        let timerInterval;
+        let wrongWords = [];
+        let isGameRunning = false;
+        let reviewIdx = 0;
+        const synth = window.speechSynthesis;
+
+        // --- 1. 登录逻辑 ---
+        document.getElementById('login-btn').onclick = () => {
+            const val = document.getElementById('student-name').value.trim();
+            if (!val) return alert("请先输入姓名！");
+            userName = val;
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('game-area').classList.remove('hidden');
+            
+            // 登录后自动播放题干
+            speak("根据听到的读音选择对应的汉字或词语。请先熟悉选项后点击开始", 0.9);
+            renderCards();
+        };
+
+        function renderCards() {
+            const container = document.getElementById('card-container');
+            container.innerHTML = '';
+            config.vocabulary.forEach(word => {
+                const card = document.createElement('div');
+                card.id = `card-${word}`;
+                card.className = "word-card bg-white p-6 rounded-[2rem] shadow-lg text-4xl font-black text-center border-4 border-blue-50 flex items-center justify-center min-h-[140px] text-gray-800";
+                card.innerText = word;
+                card.onclick = () => checkChoice(word);
+                container.appendChild(card);
+            });
+        }
+
+        // --- 2. 游戏开始控制 ---
+        document.getElementById('start-game-btn').onclick = function() {
+            this.classList.add('hidden');
+            document.getElementById('replay-btn').classList.remove('hidden');
+            remainingWords = [...config.vocabulary];
+            isGameRunning = true;
+            nextRound();
+        };
+
+        function nextRound() {
+            if (remainingWords.length === 0) return finishGame();
+            
+            const randomIndex = Math.floor(Math.random() * remainingWords.length);
+            currentTarget = remainingWords[randomIndex];
+            
+            playTargetAudio(2);
+            startTimer();
+        }
+
+        function playTargetAudio(times) {
+            let count = 0;
+            const repeat = () => {
+                if (count < times && isGameRunning) {
+                    speak(currentTarget, 0.8);
+                    count++;
+                    if (count < times) setTimeout(repeat, 1800);
+                }
+            };
+            repeat();
+        }
+
+        function startTimer() {
+            timer = 10;
+            updateTimerUI();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--;
+                updateTimerUI();
+                if (timer <= 0) handleFailure(); 
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const el = document.getElementById('timer');
+            el.innerText = `${timer}s`;
+            if (timer <= 3) el.classList.add('text-red-700', 'scale-110');
+            else el.classList.remove('scale-110', 'text-red-700');
+        }
+
+        // --- 3. 判断逻辑 ---
+        function checkChoice(word) {
+            if (!isGameRunning || !currentTarget) return;
+            
+            if (word === currentTarget) {
+                clearInterval(timerInterval);
+                document.getElementById('snd-melt').play().catch(()=>{});
+                const card = document.getElementById(`card-${word}`);
+                card.classList.add('melt-out', 'bg-green-100');
+                
+                setTimeout(() => {
+                    card.style.visibility = 'hidden';
+                    removeWordFromPool(word);
+                    nextRound();
+                }, 800);
+            } else {
+                handleFailure(word);
+            }
+        }
+
+        function handleFailure(clickedWord = null) {
+            clearInterval(timerInterval);
+            isGameRunning = false; // 暂停游戏交互
+            document.getElementById('snd-wrong').play().catch(()=>{});
+            wrongWords.push(currentTarget);
+
+            // 错误反馈
+            if (clickedWord) {
+                const wCard = document.getElementById(`card-${clickedWord}`);
+                wCard.classList.add('shake-red');
+                setTimeout(() => wCard.classList.remove('shake-red'), 1000);
+            }
+
+            // 正确卡片移到中央并放大
+            const cCard = document.getElementById(`card-${currentTarget}`);
+            cCard.classList.add('highlight-center');
+
+            let count = 0;
+            const repeat = () => {
+                if (count < 2) {
+                    speak(currentTarget, 0.7);
+                    count++;
+                    setTimeout(repeat, 1800);
+                } else {
+                    setTimeout(() => {
+                        cCard.classList.remove('highlight-center');
+                        cCard.classList.add('melt-out');
+                        setTimeout(() => {
+                            cCard.style.visibility = 'hidden';
+                            removeWordFromPool(currentTarget);
+                            isGameRunning = true;
+                            nextRound();
+                        }, 800);
+                    }, 1000);
+                }
+            };
+            repeat();
+        }
+
+        function removeWordFromPool(word) {
+            remainingWords = remainingWords.filter(w => w !== word);
+            currentTarget = "";
+        }
+
+        function speak(text, rate) {
+            synth.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            u.rate = rate;
+            synth.speak(u);
+        }
+
+        // --- 4. 完成与提交 ---
+        function finishGame() {
+            const errorStr = wrongWords.length > 0 ? wrongWords.join(', ') : "无（全对）";
+            const timeStr = new Date().toLocaleString('zh-CN', { hour12: false });
+
+            // 立即提交 Google Form
+            submitReport(errorStr, timeStr);
+
+            setTimeout(() => {
+                if (wrongWords.length > 0) startReview();
+                else showFinalSuccess();
+            }, 600);
+        }
+
+        function submitReport(errList, timeVal) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = config.googleFormURL;
+            form.target = 'hidden_iframe';
+            form.style.display = 'none';
+
+            const data = {
+                [config.entryIDs.title]: "练习_1-2",
+                [config.entryIDs.name]: userName,
+                [config.entryIDs.errors]: errList,
+                [config.entryIDs.time]: timeVal
+            };
+
+            for (const key in data) {
+                const input = document.createElement('input');
+                input.name = key;
+                input.value = data[key];
+                form.appendChild(input);
+            }
+
+            const iframe = document.createElement('iframe');
+            iframe.name = 'hidden_iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            document.body.appendChild(form);
+
+            form.submit();
+            console.log("已提交数据:", data);
+        }
+
+        function startReview() {
+            document.getElementById('game-area').classList.add('hidden');
+            document.getElementById('review-container').classList.remove('hidden');
+            showReviewItem();
+        }
+
+        function showReviewItem() {
+            const word = wrongWords[reviewIdx];
+            document.getElementById('review-word').innerText = word;
+            let c = 0;
+            const rep = () => {
+                if(c < 3) { speak(word, 0.7); c++; setTimeout(rep, 2000); }
+            };
+            rep();
+            document.getElementById('next-review-btn').onclick = () => {
+                reviewIdx++;
+                if(reviewIdx < wrongWords.length) showReviewItem();
+                else showFinalSuccess();
+            };
+        }
+
+        function showFinalSuccess() {
+            document.getElementById('review-container').classList.add('hidden');
+            document.getElementById('game-area').classList.add('hidden');
+            document.getElementById('success-container').classList.remove('hidden');
+            document.getElementById('snd-cheer').play().catch(()=>{});
+            document.getElementById('final-report').innerText = `学生：${userName} | 错词：${wrongWords.join(', ') || '全对！'}`;
+        }
+
+        document.getElementById('replay-btn').onclick = () => {
+            if(isGameRunning && currentTarget) playTargetAudio(1);
+        };
+    </script>
+</body>
+</html>
