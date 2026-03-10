@@ -1,85 +1,131 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8">
-<title>付出总有回报</title>
-<style>
-    body {
-        margin: 0;
-        padding: 0;
-        background: url('bg1.jpg') no-repeat center center fixed;
-        background-size: cover;
-        font-family: "Microsoft YaHei", sans-serif;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        color: white;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>就是爱你爱着你学习系统</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: url('cover.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            color: white;
+            overflow: hidden; /* 防止出现滚动条 */
+        }
 
-    h1 {
-        text-align: center;
-        margin-top: 40px;
-        font-size: 40px;
-        text-shadow: 2px 2px 5px black;
-    }
+        h1 {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 45px;
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
+            letter-spacing: 2px;
+        }
 
-    .center-links {
-        flex: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 40px;
-    }
+        /* 主容器：控制列与列之间的间距 */
+        .center-links {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 80px; /* 列与列的大间距 */
+        }
 
-    .center-links a {
-        text-decoration: none;
-        padding: 15px 40px;
-        font-size: 22px;
-        background-color: rgba(0,0,0,0.6);
-        color: white;
-        border-radius: 10px;
-        transition: 0.3s;
-    }
+        /* 每一列的容器：控制按钮上下垂直排布 */
+        .link-column {
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* 按钮之间的垂直间距 */
+            perspective: 1000px;
+        }
 
-    .center-links a:hover {
-        background-color: rgba(255,255,255,0.8);
-        color: black;
-    }
+        /* 基础按钮样式 */
+        .center-links a {
+            text-decoration: none;
+            padding: 18px 45px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            border-radius: 15px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
 
-    .footer {
-        text-align: center;
-        margin-bottom: 40px;
-    }
+        /* 分组颜色 1: 视频类（蓝色系） */
+        .btn-video {
+            background-color: rgba(30, 64, 175, 0.7); /* 深蓝色 */
+        }
 
-    .footer textarea {
-        width: 60%;
-        height: 60px;
-        font-size: 18px;
-        border-radius: 8px;
-        padding: 10px;
-        resize: none;
-    }
-</style>
+        /* 分组颜色 2: 练习类（橙色系） */
+        .btn-homework {
+            background-color: rgba(234, 88, 12, 0.7); /* 橙红色 */
+        }
+
+        /* 悬停效果：变色并放大 */
+        .center-links a:hover {
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #1a1a1a;
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-color: white;
+        }
+
+        .footer {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .footer textarea {
+            width: 50%;
+            height: 80px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 12px;
+            padding: 15px;
+            resize: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+    </style>
 </head>
 
 <body>
 
-<h1>付出总有回报</h1>
+<h1>就是爱你爱着你学习系统</h1>
 
 <div class="center-links">
-    <a href="ytb1.html">视频学习 Watch Video 1</a>
-    <a href="hw1.html">练习 Practice 1-1</a>
-    <a href="hw2.html">练习 Practice 1-2</a>
-	<a href="ytb_e1.html">视频学习 《鹅》1</a>
-	<a href="ytb_e2.html">视频学习 《鹅》2</a>
-</div>
+    <div class="link-column">
+        <a href="ytb1.html" class="btn-video">📺 视频学习一</a> 
+        <a href="hw1.html" class="btn-homework">✍️ 练习一</a>
+		<a href="hw2.html" class="btn-homework">✍️ 练习二</a>
+    </div>
+
+    <div class="link-column">
+        <a href="ytb_e1.html" class="btn-video">📺 《鹅》视频学习 1</a> 
+		<a href="ytb_e2.html" class="btn-video">📺 《鹅》视频学习 2</a> 
+        <a href="hw_e1.html" class="btn-homework">✍️ 《鹅》练习一</a>
+		<a href="hw_e2.html" class="btn-homework">✍️ 《鹅》练习二</a>
+		<a href="hw_e3.html" class="btn-homework">📖 《鹅》练习三</a>
+    </div>
+
+    </div>
 
 <div class="footer">
-    <textarea>好好学习，天天向上！
-	</textarea>
+    <textarea readonly>好好学习，天天向上！
+老师爱你们哟 ❤️
+（*＾-＾*）</textarea>
 </div>
 
 </body>
-
 </html>
-
