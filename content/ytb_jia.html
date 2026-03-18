@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频学习系统 - YouTube</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-image: url('bg1.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        /* 禁用状态：灰色、不可点击 */
+        .btn-disabled {
+            background-color: #9ca3af !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        #login-overlay { transition: opacity 0.5s ease; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+        <div class="glass-morphism p-10 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full border-t-8 border-blue-500">
+            <h2 class="text-3xl font-black text-blue-900 mb-2">欢迎学习</h2>
+            <p class="text-gray-600 mb-8 font-medium">请先输入姓名以记录进度</p>
+            
+            <input type="text" id="student-name" 
+                   class="w-full p-4 border-4 border-blue-100 rounded-2xl mb-6 text-center text-2xl font-bold focus:border-blue-400 outline-none transition-all" 
+                   placeholder="中文姓名">
+            
+            <button id="login-btn" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl text-xl shadow-xl transform transition active:scale-95">
+                进入视频 (Start)
+            </button>
+        </div>
+    </div>
+
+    <div id="main-content" class="max-w-5xl w-full glass-morphism p-8 rounded-[3rem] shadow-2xl text-center opacity-0 transition-opacity duration-1000 border-4 border-white">
+        <h1 id="page-title" class="text-4xl font-black text-blue-900 mb-6 drop-shadow-sm tracking-tight">
+            视频加载中...
+        </h1>
+        
+        <div class="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl mb-8 border-4 border-gray-100">
+            <div id="player"></div>
+        </div>
+
+        <div class="flex flex-col items-center space-y-6">
+            <p id="statusHint" class="text-xl font-bold text-red-500 flex items-center">
+                <span id="statusIcon" class="mr-2 animate-bounce">⚠️</span>
+                <span id="statusText">请完整看视频，看完后自动提交记录</span>
+            </p>
+
+            <div class="relative">
+                <a href="index.html" id="homeBtn" 
+                   class="btn-disabled inline-block bg-blue-600 text-white px-20 py-5 rounded-3xl text-2xl font-black shadow-2xl transition-all active:scale-90">
+                    🏠 回主页 (Back to Home)
+                </a>
+                <p id="submit-notice" class="hidden absolute -bottom-10 left-0 right-0 text-green-600 font-black text-center animate-pulse">
+                    ✅ 记录已自动发送到老师后台！
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script>
+        // ================= 后台配置区 =================
+        const config = {
+            title: "视频学习_1", // 页面显示的标题
+            videoId: 'ETndcmQTros',        // 你提供的 YouTube 视频 ID
+            
+            // Google Form 映射 (请替换为你真实的 ID)
+            googleFormURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse", 
+            entryIDs: {
+                title: "entry.24104562", // 对应 Form 中的：练习标题
+                name: "entry.178626966",  // 对应 Form 中的：姓名
+                time: "entry.1112503934"   // 对应 Form 中的：完成时间
+            }
+        };
+
+        let player;
+        let userName = "";
+
+        // --- 1. 登录处理 ---
+        document.getElementById('login-btn').onclick = function() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            if (!nameInput) {
+                alert("请输入姓名！Please enter your name.");
+                return;
+            }
+            userName = nameInput;
+            
+            // 动画切换
+            document.getElementById('login-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('login-overlay').classList.add('hidden');
+                const main = document.getElementById('main-content');
+                main.classList.remove('opacity-0');
+                document.getElementById('page-title').innerText = config.title;
+            }, 500);
+        };
+
+        // --- 2. YouTube API 初始化 ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: config.videoId,
+                playerVars: {
+                    'rel': 0,            // 不显示相关视频
+                    'modestbranding': 1, // 隐藏多余标志
+                    'controls': 1,       // 显示控制条
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        // --- 3. 监听状态：当视频播放结束 ---
+        function onPlayerStateChange(event) {
+            // YT.PlayerState.ENDED 为视频播放结束的状态
+            if (event.data === YT.PlayerState.ENDED) {
+                handleStudyComplete();
+            }
+        }
+
+        // --- 4. 完成后的逻辑：解锁并提交 ---
+        function handleStudyComplete() {
+            // 解锁按钮
+            const homeBtn = document.getElementById('homeBtn');
+            homeBtn.classList.remove('btn-disabled');
+            homeBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'scale-105');
+            
+            // 状态文字更新
+            document.getElementById('statusText').innerText = "恭喜！学习已完成";
+            document.getElementById('statusIcon').innerText = "✅";
+            document.getElementById('statusIcon').classList.remove('animate-bounce');
+            document.getElementById('statusHint').className = "text-xl font-bold text-green-600 flex items-center";
+            document.getElementById('submit-notice').classList.remove('hidden');
+
+            // 自动提交到 Google Form
+            submitToGoogleForm();
+        }
+
+        function submitToGoogleForm() {
+            const now = new Date().toLocaleString('zh-CN', { hour12: false });
+            
+            // 动态创建隐藏表单提交
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = config.googleFormURL;
+            form.target = 'hidden_iframe'; // 关键：指向隐藏的 iframe，防止页面跳转
+            form.style.display = 'none';
+
+            const data = {
+                [config.entryIDs.title]: config.title,
+                [config.entryIDs.name]: userName,
+                [config.entryIDs.time]: now
+            };
+
+            for (const key in data) {
+                const input = document.createElement('input');
+                input.name = key;
+                input.value = data[key];
+                form.appendChild(input);
+            }
+
+            // 创建隐藏的 IFrame 处理返回请求
+            const iframe = document.createElement('iframe');
+            iframe.name = 'hidden_iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            document.body.appendChild(form);
+
+            form.submit();
+            console.log("提交成功: " + userName + " 在 " + now);
+        }
+    </script>
+</body>
+
+</html>
