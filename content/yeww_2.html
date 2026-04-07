@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>《月儿弯弯》练习一</title>
+    <title>《月儿弯弯》练习二</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -83,7 +83,7 @@
     <script>
         // ================= CONFIG 配置区 =================
         let config = {
-            title: "《月儿弯弯》练习一",
+            title: "《月儿弯弯》练习二",
             questions: [], // 初始为空，由 Excel 填充
             googleFormURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse", 
             entryIDs: {
@@ -119,7 +119,7 @@
                 // 假设 A:答案, B/C/D: 选项
                 config.questions = rawData
                     .filter(row => row.length >= 4) // 确保行内有足够的数据
-                    .slice(55, 72) // config
+                    .slice(54, 72) // 左开右闭
                     .map(row => ({
                         answer: String(row[0]),
                         options: [String(row[1]), String(row[2]), String(row[3])]
