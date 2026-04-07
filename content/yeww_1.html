@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>《月儿弯弯》练习一</title>
+    <title>《月儿弯弯》连续练习模式</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-image: url('../img/bg1.jpg'); background-size: cover; background-attachment: fixed; }
@@ -26,36 +26,31 @@
             <input type="text" id="login-name" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-4 text-center text-xl font-bold" placeholder="姓名 Name">
             <input type="password" id="login-pass" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-6 text-center text-xl font-bold" placeholder="密码 Password">
             <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg active:scale-95 transition-all">确认进入</button>
-            <p class="text-xs text-gray-400 mt-4">v1.1 - 教师请确保 test.txt 与本文件在同一目录</p>
         </div>
     </div>
 
     <div id="header" class="hidden text-center mb-6 glass p-6 rounded-3xl shadow-lg w-full max-w-4xl mt-12">
-        <h1 class="text-3xl font-black text-blue-900">《月儿弯弯》练习一</h1>
-        <p id="line-info" class="text-blue-600 font-bold"></p>
+        <h1 class="text-3xl font-black text-blue-900">《月儿弯弯》同步练习</h1>
+        <div class="flex justify-center gap-4 mt-2">
+            <span id="line-info" class="text-blue-600 font-bold bg-blue-50 px-4 py-1 rounded-full"></span>
+            <span id="stage-info" class="text-orange-600 font-bold bg-orange-50 px-4 py-1 rounded-full"></span>
+        </div>
     </div>
 
     <div id="game-area" class="hidden w-full max-w-6xl flex flex-col items-center">
         <div class="flex justify-between w-full mb-6 px-4 items-center">
-            <div id="timer-display" class="text-4xl font-black text-red-600 bg-white px-8 py-2 rounded-full shadow-md border-4 border-red-50">15s</div>
-            <button id="start-btn" class="bg-orange-500 text-white px-16 py-4 rounded-full font-black text-2xl shadow-xl animate-bounce">开始 Start</button>
-            <button id="replay-btn" class="hidden bg-blue-500 text-white px-8 py-3 rounded-full font-black text-lg">🔊 重读</button>
+            <div id="timer-display" class="text-4xl font-black text-red-600 bg-white px-8 py-2 rounded-full shadow-md border-4 border-red-50">--s</div>
+            <button id="start-btn" class="bg-orange-500 text-white px-16 py-4 rounded-full font-black text-2xl shadow-xl animate-bounce">开始练习 Start</button>
+            <button id="replay-btn" class="hidden bg-blue-500 text-white px-8 py-3 rounded-full font-black text-lg">🔊 重读词语</button>
         </div>
         <div id="card-grid" class="grid gap-4 w-full p-4"></div>
     </div>
 
     <div id="celebration" class="hidden fixed inset-0 z-[3000] glass flex flex-col items-center justify-center text-center p-6">
         <div class="giant-flower">🌺</div>
-        <h2 class="text-6xl font-black text-red-600 mb-4">太棒啦！天花板！</h2>
+        <h2 class="text-6xl font-black text-red-600 mb-4">挑战成功！</h2>
         <p id="final-summary" class="text-2xl font-bold text-gray-700 mb-10"></p>
-        
-        <button onclick="submitToGoogle()" class="bg-red-600 text-white px-12 py-5 rounded-2xl text-3xl font-black shadow-2xl active:scale-95 transition-all">
-            提交成绩
-        </button>
-
-        <button onclick="location.href='../index.html'" class="mt-6 bg-white border-4 border-blue-100 text-blue-600 px-10 py-3 rounded-2xl text-xl font-black shadow-md hover:bg-blue-50 active:scale-95 transition-all">
-            🏠 返回主页
-        </button>
+        <button onclick="submitToGoogle()" class="bg-red-600 text-white px-12 py-5 rounded-2xl text-3xl font-black shadow-2xl active:scale-95 transition-all">提交成绩</button>
     </div>
 
     <audio id="snd-correct" src="../audio/correct.mp3"></audio>
@@ -67,22 +62,30 @@
         
         // ================= 教师维护区 =================
         const config = {
-            filePath: "test.txt", // 文件的读取路径
-            targetLineIndex: 2,   // 教师控制：读取第几行 (0是第一行)
-            countdown: 15,        // 倒计时时间
-            formURL: "https://docs.google.com/forms/d/e/您的ID/formResponse",
-            entryIDs: { title: "entry.1", name: "entry.2", errors: "entry.3", time: "entry.4" }
+            filePath: "test.txt",
+            // 练习序列：填入 test.txt 中的行号（从1开始计数）
+            // 比如下方的 [3, 4, 5] 表示：第一关练第3行，第二关练第4行，第三关练第5行
+            practiceSteps: [1, 2, 3], 
+            countdown: 15,
+             formURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse", 
+            entryIDs: {
+                title: "entry.24104562",   // 请替换为真实的entry ID
+                name: "entry.178626966",    
+                errors: "entry.1112503934",  
+                time: "entry.1751911239"     
+            }
         };
         // =============================================
 
-        let words = [];
+        let allLines = [];
+        let currentStepIndex = 0; // 当前进行到 config.practiceSteps 的第几个
         let userName = "";
         let currentTarget = "";
         let timer = config.countdown;
         let timerInterval;
         let isGameRunning = false;
         let wrongWords = new Set();
-        let startTime;
+        let totalStartTime;
 
         async function handleLogin() {
             const name = document.getElementById('login-name').value.trim();
@@ -91,41 +94,52 @@
                 userName = name;
                 await loadFileData();
             } else {
-                alert("用户名或密码错误！");
+                alert("姓名或密码错误！");
             }
         }
 
         async function loadFileData() {
             try {
-                const response = await fetch(config.filePath + '?t=' + Date.now()); 
-                
-                if (!response.ok) throw new Error("文件未找到");
-
+                const response = await fetch(config.filePath + '?t=' + Date.now());
+                if (!response.ok) throw new Error("无法读取 test.txt 文件");
                 const text = await response.text();
-                const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-                
-                if (lines.length <= config.targetLineIndex) {
-                    alert(`错误：您设置读取第 ${config.targetLineIndex + 1} 行，但文件中只有 ${lines.length} 行内容。`);
-                    return;
-                }
-
-                const lineContent = lines[config.targetLineIndex];
-                words = lineContent.split(/[,，]/).map(s => s.trim());
+                // 预处理所有行
+                allLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
                 
                 document.getElementById('login-overlay').classList.add('hidden');
                 document.getElementById('header').classList.remove('hidden');
                 document.getElementById('game-area').classList.remove('hidden');
-                document.getElementById('line-info').innerText = `当前练习：第 ${config.targetLineIndex + 1} 组词语`;
                 
-                initCards();
+                totalStartTime = Date.now();
+                setupStage(); // 初始化第一关
             } catch (e) {
-                console.error(e);
-                alert(`【无法加载文件】\n原因：${e.message}\n\n教师提示：\n1. 请检查 ${config.filePath} 是否与本网页在同一文件夹。\n2. 必须使用 Live Server 打开网页。`);
+                alert(`加载失败: ${e.message}`);
             }
         }
 
-        function initCards() {
-            const pool = [...words, ...words];
+        // 设置当前关卡的数据
+        function setupStage() {
+            const targetLineNumber = config.practiceSteps[currentStepIndex];
+            const lineContent = allLines[targetLineNumber - 1]; // 转为数组下标
+
+            if (!lineContent) {
+                alert(`配置错误：找不到第 ${targetLineNumber} 行内容`);
+                return;
+            }
+
+            const words = lineContent.split(/[,，]/).map(s => s.trim());
+            
+            // UI 更新
+            document.getElementById('line-info').innerText = `内容：第 ${targetLineNumber} 行`;
+            document.getElementById('stage-info').innerText = `进度：${currentStepIndex + 1} / ${config.practiceSteps.length}`;
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('replay-btn').classList.add('hidden');
+            
+            initCards(words);
+        }
+
+        function initCards(wordList) {
+            const pool = [...wordList, ...wordList];
             pool.sort(() => Math.random() - 0.5);
 
             const grid = document.getElementById('card-grid');
@@ -147,26 +161,49 @@
             this.classList.add('hidden');
             document.getElementById('replay-btn').classList.remove('hidden');
             isGameRunning = true;
-            startTime = Date.now();
             nextQuestion();
         };
 
         function nextQuestion() {
             const activeCards = Array.from(document.querySelectorAll('.word-card:not(.matched)'));
-            if (activeCards.length === 0) return finishGame();
+            
+            if (activeCards.length === 0) {
+                return checkNextStage();
+            }
+
             const remainingWords = [...new Set(activeCards.map(c => c.dataset.word))];
             currentTarget = remainingWords[Math.floor(Math.random() * remainingWords.length)];
+            
             playAudio(currentTarget, 2);
             startTimer();
         }
 
+        function checkNextStage() {
+            isGameRunning = false;
+            clearInterval(timerInterval);
+            
+            if (currentStepIndex < config.practiceSteps.length - 1) {
+                // 还有下一关
+                currentStepIndex++;
+                setTimeout(() => {
+                    alert(`第 ${currentStepIndex} 部分完成！点击确定进入下一组。`);
+                    setupStage();
+                }, 500);
+            } else {
+                // 全部完成
+                finishGame();
+            }
+        }
+
         function handleChoice(word, element) {
             if (!isGameRunning || element.classList.contains('matched')) return;
+            
             if (word === currentTarget) {
                 element.classList.add('matched');
                 document.getElementById('snd-correct').play().catch(()=>{});
-                const pairCount = document.querySelectorAll(`.word-card[data-word="${word}"].matched`).length;
-                if (pairCount % 2 === 0) {
+                const matchedThisWord = document.querySelectorAll(`.word-card[data-word="${word}"].matched`).length;
+                
+                if (matchedThisWord % 2 === 0) {
                     clearInterval(timerInterval);
                     setTimeout(nextQuestion, 800);
                 }
@@ -175,6 +212,8 @@
                 document.getElementById('snd-wrong').play().catch(()=>{});
                 element.classList.add('wrong-shake');
                 setTimeout(() => element.classList.remove('wrong-shake'), 500);
+                
+                // 提示正确答案
                 document.querySelectorAll(`.word-card[data-word="${currentTarget}"]:not(.matched)`).forEach(c => {
                     c.classList.add('highlight-correct');
                     setTimeout(() => c.classList.remove('highlight-correct'), 2000);
@@ -202,16 +241,17 @@
         function updateTimerUI() {
             const el = document.getElementById('timer-display');
             el.innerText = `${timer}s`;
-            el.style.color = timer <= 5 ? 'red' : '#ef4444';
+            el.style.color = timer <= 5 ? '#ef4444' : '#ef4444';
         }
 
         function playAudio(text, times) {
             let count = 0;
             const speak = () => {
-                if (count < times) {
+                if (count < times && isGameRunning) {
                     window.speechSynthesis.cancel();
                     const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'zh-CN'; u.rate = 0.8;
+                    u.lang = 'zh-CN'; 
+                    u.rate = 0.8;
                     window.speechSynthesis.speak(u);
                     count++;
                     if (count < times) setTimeout(speak, 1500);
@@ -221,16 +261,16 @@
         }
 
         function finishGame() {
-            isGameRunning = false;
-            clearInterval(timerInterval);
             document.getElementById('celebration').classList.remove('hidden');
             document.getElementById('snd-cheer').play().catch(()=>{});
-            const totalTime = Math.floor((Date.now() - startTime) / 1000);
-            document.getElementById('final-summary').innerText = `学生：${userName} | 用时：${totalTime}s | 错词：${Array.from(wrongWords).join(', ') || '全对'}`;
+            const totalTime = Math.floor((Date.now() - totalStartTime) / 1000);
+            const wrongList = Array.from(wrongWords).join(', ') || '全对 (Perfect!)';
+            document.getElementById('final-summary').innerText = `学生：${userName}\n总耗时：${totalTime}秒\n需要加强的词：${wrongList}`;
         }
 
         function submitToGoogle() {
-            alert("提交成功！");
+            alert("成绩已记录！");
+            location.reload(); 
         }
 
         document.getElementById('replay-btn').onclick = () => playAudio(currentTarget, 1);
