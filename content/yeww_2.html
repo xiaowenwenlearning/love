@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《月儿弯弯》连续练习模式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-image: url('../img/bg1.jpg'); background-size: cover; background-attachment: fixed; }
+        .glass { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 2px solid white; }
+        .word-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .matched { opacity: 0 !important; transform: scale(0); pointer-events: none; }
+        .wrong-shake { animation: shake 0.5s; background-color: #fee2e2 !important; border-color: #ef4444 !important; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(10px); } }
+        .highlight-correct { animation: pulse-yellow 0.6s infinite; background-color: #fef08a !important; border-color: #eab308 !important; z-index: 50; }
+        @keyframes pulse-yellow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .giant-flower { font-size: 20rem; animation: blossom 1.5s cubic-bezier(0.17, 0.67, 0.83, 1.5); display: inline-block; }
+        @keyframes blossom { 0% { transform: scale(0) rotate(-45deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div id="login-overlay" class="fixed inset-0 z-[2000] flex items-center justify-center bg-black bg-opacity-90">
+        <div class="glass p-10 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full">
+            <h2 class="text-3xl font-black text-blue-900 mb-6">学生登录</h2>
+            <input type="text" id="login-name" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-4 text-center text-xl font-bold" placeholder="姓名 Name">
+            <input type="password" id="login-pass" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-6 text-center text-xl font-bold" placeholder="密码 Password">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg active:scale-95 transition-all">确认进入</button>
+        </div>
+    </div>
+
+    <div id="header" class="hidden text-center mb-6 glass p-6 rounded-3xl shadow-lg w-full max-w-4xl mt-12">
+        <h1 class="text-3xl font-black text-blue-900">《月儿弯弯》同步练习</h1>
+        <div class="flex justify-center gap-4 mt-2">
+            <span id="line-info" class="text-blue-600 font-bold bg-blue-50 px-4 py-1 rounded-full"></span>
+            <span id="stage-info" class="text-orange-600 font-bold bg-orange-50 px-4 py-1 rounded-full"></span>
+        </div>
+    </div>
+
+    <div id="game-area" class="hidden w-full max-w-6xl flex flex-col items-center">
+        <div class="flex justify-between w-full mb-6 px-4 items-center">
+            <div id="timer-display" class="text-4xl font-black text-red-600 bg-white px-8 py-2 rounded-full shadow-md border-4 border-red-50">--s</div>
+            <button id="start-btn" class="bg-orange-500 text-white px-16 py-4 rounded-full font-black text-2xl shadow-xl animate-bounce">开始练习 Start</button>
+            <button id="replay-btn" class="hidden bg-blue-500 text-white px-8 py-3 rounded-full font-black text-lg">🔊 重读词语</button>
+        </div>
+        <div id="card-grid" class="grid gap-4 w-full p-4"></div>
+    </div>
+
+    <div id="celebration" class="hidden fixed inset-0 z-[3000] glass flex flex-col items-center justify-center text-center p-6">
+        <div class="giant-flower">🌺</div>
+        <h2 class="text-6xl font-black text-red-600 mb-4">挑战成功！</h2>
+        <p id="final-summary" class="text-2xl font-bold text-gray-700 mb-10"></p>
+        <button onclick="submitToGoogle()" class="bg-red-600 text-white px-12 py-5 rounded-2xl text-3xl font-black shadow-2xl active:scale-95 transition-all">提交成绩</button>
+    </div>
+
+    <audio id="snd-correct" src="../audio/correct.mp3"></audio>
+    <audio id="snd-wrong" src="../audio/wrong.mp3"></audio>
+    <audio id="snd-cheer" src="../audio/cheer.mp3"></audio>
+
+    <script>
+        const userDatabase = { "Oliver": "168","Lucas": "168","Victoria": "168","Emma": "168","Ethan": "168","Chloe": "168","Sophie": "168","Alex": "168","Yvonna": "168","Wenwen": "168", "老师": "888888" };
+        
+        // ================= 教师维护区 =================
+        const config = {
+            filePath: "test.txt",
+            // 练习序列：填入 test.txt 中的行号（从1开始计数）
+            // 比如下方的 [3, 4, 5] 表示：第一关练第3行，第二关练第4行，第三关练第5行
+            practiceSteps: [1, 2, 3], 
+            countdown: 15,
+            formURL: "https://docs.google.com/forms/d/e/.../formResponse"
+        };
+        // =============================================
+
+        let allLines = [];
+        let currentStepIndex = 0; // 当前进行到 config.practiceSteps 的第几个
+        let userName = "";
+        let currentTarget = "";
+        let timer = config.countdown;
+        let timerInterval;
+        let isGameRunning = false;
+        let wrongWords = new Set();
+        let totalStartTime;
+
+        async function handleLogin() {
+            const name = document.getElementById('login-name').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            if (userDatabase[name] === pass) {
+                userName = name;
+                await loadFileData();
+            } else {
+                alert("姓名或密码错误！");
+            }
+        }
+
+        async function loadFileData() {
+            try {
+                const response = await fetch(config.filePath + '?t=' + Date.now());
+                if (!response.ok) throw new Error("无法读取 test.txt 文件");
+                const text = await response.text();
+                // 预处理所有行
+                allLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+                
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('header').classList.remove('hidden');
+                document.getElementById('game-area').classList.remove('hidden');
+                
+                totalStartTime = Date.now();
+                setupStage(); // 初始化第一关
+            } catch (e) {
+                alert(`加载失败: ${e.message}`);
+            }
+        }
+
+        // 设置当前关卡的数据
+        function setupStage() {
+            const targetLineNumber = config.practiceSteps[currentStepIndex];
+            const lineContent = allLines[targetLineNumber - 1]; // 转为数组下标
+
+            if (!lineContent) {
+                alert(`配置错误：找不到第 ${targetLineNumber} 行内容`);
+                return;
+            }
+
+            const words = lineContent.split(/[,，]/).map(s => s.trim());
+            
+            // UI 更新
+            document.getElementById('line-info').innerText = `内容：第 ${targetLineNumber} 行`;
+            document.getElementById('stage-info').innerText = `进度：${currentStepIndex + 1} / ${config.practiceSteps.length}`;
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('replay-btn').classList.add('hidden');
+            
+            initCards(words);
+        }
+
+        function initCards(wordList) {
+            const pool = [...wordList, ...wordList];
+            pool.sort(() => Math.random() - 0.5);
+
+            const grid = document.getElementById('card-grid');
+            const cols = pool.length > 10 ? 5 : (pool.length > 6 ? 4 : 3);
+            grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+            grid.innerHTML = '';
+
+            pool.forEach((word) => {
+                const card = document.createElement('div');
+                card.className = "word-card glass rounded-3xl p-6 text-2xl font-black text-blue-900 border-4 border-blue-50 min-h-[110px]";
+                card.innerText = word;
+                card.dataset.word = word;
+                card.onclick = () => handleChoice(word, card);
+                grid.appendChild(card);
+            });
+        }
+
+        document.getElementById('start-btn').onclick = function() {
+            this.classList.add('hidden');
+            document.getElementById('replay-btn').classList.remove('hidden');
+            isGameRunning = true;
+            nextQuestion();
+        };
+
+        function nextQuestion() {
+            const activeCards = Array.from(document.querySelectorAll('.word-card:not(.matched)'));
+            
+            if (activeCards.length === 0) {
+                return checkNextStage();
+            }
+
+            const remainingWords = [...new Set(activeCards.map(c => c.dataset.word))];
+            currentTarget = remainingWords[Math.floor(Math.random() * remainingWords.length)];
+            
+            playAudio(currentTarget, 2);
+            startTimer();
+        }
+
+        function checkNextStage() {
+            isGameRunning = false;
+            clearInterval(timerInterval);
+            
+            if (currentStepIndex < config.practiceSteps.length - 1) {
+                // 还有下一关
+                currentStepIndex++;
+                setTimeout(() => {
+                    alert(`第 ${currentStepIndex} 部分完成！点击确定进入下一组。`);
+                    setupStage();
+                }, 500);
+            } else {
+                // 全部完成
+                finishGame();
+            }
+        }
+
+        function handleChoice(word, element) {
+            if (!isGameRunning || element.classList.contains('matched')) return;
+            
+            if (word === currentTarget) {
+                element.classList.add('matched');
+                document.getElementById('snd-correct').play().catch(()=>{});
+                const matchedThisWord = document.querySelectorAll(`.word-card[data-word="${word}"].matched`).length;
+                
+                if (matchedThisWord % 2 === 0) {
+                    clearInterval(timerInterval);
+                    setTimeout(nextQuestion, 800);
+                }
+            } else {
+                wrongWords.add(currentTarget);
+                document.getElementById('snd-wrong').play().catch(()=>{});
+                element.classList.add('wrong-shake');
+                setTimeout(() => element.classList.remove('wrong-shake'), 500);
+                
+                // 提示正确答案
+                document.querySelectorAll(`.word-card[data-word="${currentTarget}"]:not(.matched)`).forEach(c => {
+                    c.classList.add('highlight-correct');
+                    setTimeout(() => c.classList.remove('highlight-correct'), 2000);
+                });
+                playAudio(currentTarget, 1);
+            }
+        }
+
+        function startTimer() {
+            timer = config.countdown;
+            updateTimerUI();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--;
+                updateTimerUI();
+                if (timer <= 0) {
+                    clearInterval(timerInterval);
+                    wrongWords.add(currentTarget);
+                    document.querySelectorAll(`.word-card[data-word="${currentTarget}"]`).forEach(c => c.classList.add('highlight-correct'));
+                    setTimeout(nextQuestion, 2000);
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const el = document.getElementById('timer-display');
+            el.innerText = `${timer}s`;
+            el.style.color = timer <= 5 ? '#ef4444' : '#ef4444';
+        }
+
+        function playAudio(text, times) {
+            let count = 0;
+            const speak = () => {
+                if (count < times && isGameRunning) {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'zh-CN'; 
+                    u.rate = 0.8;
+                    window.speechSynthesis.speak(u);
+                    count++;
+                    if (count < times) setTimeout(speak, 1500);
+                }
+            };
+            speak();
+        }
+
+        function finishGame() {
+            document.getElementById('celebration').classList.remove('hidden');
+            document.getElementById('snd-cheer').play().catch(()=>{});
+            const totalTime = Math.floor((Date.now() - totalStartTime) / 1000);
+            const wrongList = Array.from(wrongWords).join(', ') || '全对 (Perfect!)';
+            document.getElementById('final-summary').innerText = `学生：${userName}\n总耗时：${totalTime}秒\n需要加强的词：${wrongList}`;
+        }
+
+        function submitToGoogle() {
+            alert("成绩已记录！");
+            location.reload(); 
+        }
+
+        document.getElementById('replay-btn').onclick = () => playAudio(currentTarget, 1);
+    </script>
+</body>
+</html>
