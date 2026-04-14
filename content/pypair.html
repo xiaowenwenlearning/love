@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>《拼音配对》A20</title>
+    <script src="https://unpkg.com/pinyin-pro"></script>
+    <style>
+        body {
+            background-image: url('../img/bg1.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            font-family: 'PingFang SC', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* 防止滚动条干扰 */
+        }
+
+        #login-box, #game-container {
+            background: rgba(255, 255, 255, 0.96);
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            margin-top: 50px;
+            text-align: center;
+            max-width: 800px;
+            width: 92%;
+        }
+
+        .hidden { display: none !important; }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .card {
+            padding: 18px 25px;
+            background: #fff;
+            border: 2px solid #2196f3;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 32px;
+            color: #333;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #1976d2;
+            min-width: 110px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .card.selected { background: #ffeb3b; border-color: #fbc02d; box-shadow: 0 4px 0 #f9a825; }
+
+        /* 强化的纠错遮罩层 */
+        #correction-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #correction-box {
+            background: white;
+            padding: 50px;
+            border-radius: 25px;
+            text-align: center;
+            transform: scale(1.2); /* 自动放大 */
+        }
+
+        .highlight-text {
+            font-size: 80px;
+            font-weight: bold;
+            margin: 20px;
+            display: inline-block;
+        }
+
+        #lollipop { font-size: 150px; margin: 20px 0; }
+        .footer-nav { position: fixed; bottom: 20px; width: 100%; text-align: center; }
+        .btn {
+            padding: 12px 35px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-box">
+        <h2 id="page-display-title">《拼音配对》A20</h2>
+        <div style="margin: 20px 0;">
+            <input type="text" id="username" placeholder="学生姓名" style="padding:12px; width:220px; border-radius:8px; border:1px solid #ddd;"><br><br>
+            <input type="password" id="password" placeholder="练习密码" style="padding:12px; width:220px; border-radius:8px; border:1px solid #ddd;">
+        </div>
+        <button class="btn" onclick="login()">确认登录</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="instruction">
+            <h2 style="color:#333;">Please pair the character and pinyin.</h2>
+            <button class="btn" style="font-size:26px; padding:15px 50px;" onclick="startGame()">开始 Start</button>
+        </div>
+
+        <div id="game-board" class="hidden">
+            <div id="cards" class="card-container"></div>
+        </div>
+
+        <div id="finish-screen" class="hidden">
+            <div id="lollipop">🍭</div>
+            <h1 style="color:#ff4081;">恭喜过关！</h1>
+        </div>
+    </div>
+
+    <div id="correction-overlay" class="hidden">
+        <div id="correction-box">
+            <h2 style="color: #666; margin:0;">正确答案是：</h2>
+            <div>
+                <span id="correct-char" class="highlight-text" style="color:#e91e63"></span>
+                <span id="correct-pinyin" class="highlight-text" style="color:#2196f3"></span>
+            </div>
+            <button class="btn" style="background:#333; margin-top:20px;" onclick="closeCorrection()">我知道了</button>
+        </div>
+    </div>
+
+    <div class="footer-nav">
+        <button class="btn" style="background:#2196f3" onclick="location.href='../index.html'">回主页 Home</button>
+    </div>
+
+    <audio id="snd-melt" src="../audio/melt.MP3"></audio>
+    <audio id="snd-wrong" src="../audio/wrong.MP3"></audio>
+
+    <script>
+        const CONFIG = {
+            title: "A20",
+            colIndex: 0, 
+            maxRow: 20,
+            csvPath: './pypair.csv',
+            userPath: '../user/use.txt',
+            formURL: 'https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse'
+        };
+
+        document.title = `《拼音配对》${CONFIG.title}`;
+        document.getElementById('page-display-title').innerText = `《拼音配对》${CONFIG.title}`;
+
+        let currentUser = "";
+        let quizPool = []; 
+        let errorSet = new Set(); 
+        let startTime;
+        let selectedCards = [];
+        let wrongCountMap = {}; 
+        let isGameRunning = false; // 游戏状态锁
+
+        async function login() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if(!u || !p) return alert("请输入信息");
+
+            try {
+                const resp = await fetch(CONFIG.userPath);
+                const text = await resp.text();
+                const auth = text.split(/\r?\n/).some(line => {
+                    const ps = line.split('\t');
+                    return ps[0]?.trim() === u && ps[1]?.trim() === p;
+                });
+
+                if (auth) {
+                    currentUser = u;
+                    document.getElementById('login-box').classList.add('hidden');
+                    document.getElementById('game-container').classList.remove('hidden');
+                    await loadCSV();
+                } else { alert("验证失败"); }
+            } catch (e) { alert("读取配置文件出错"); }
+        }
+
+        async function loadCSV() {
+            try {
+                const resp = await fetch(CONFIG.csvPath);
+                const text = await resp.text();
+                const rows = text.split(/\r?\n/).filter(r => r.trim() !== "");
+                quizPool = [];
+                for (let i = 1; i < Math.min(rows.length, CONFIG.maxRow); i++) {
+                    const cols = rows[i].split(',');
+                    const char = cols[CONFIG.colIndex]?.trim();
+                    if (char && char.match(/[\u4e00-\u9fa5]/)) { // 确保是汉字
+                        const py = pinyinPro.pinyin(char, { toneType: 'symbol' });
+                        quizPool.push({ char, py });
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function startGame() {
+            if (quizPool.length === 0) return alert("没加载到汉字，请检查CSV第一列。");
+            document.getElementById('instruction').classList.add('hidden');
+            document.getElementById('game-board').classList.remove('hidden');
+            startTime = new Date();
+            isGameRunning = true;
+            renderBatch();
+        }
+
+        function renderBatch() {
+            const container = document.getElementById('cards');
+            container.innerHTML = '';
+            
+            const total = quizPool.length;
+            const groupCount = Math.ceil(total / 6); 
+            const batchSize = Math.ceil(total / groupCount); 
+            const currentBatch = quizPool.splice(0, batchSize);
+
+            let items = [];
+            currentBatch.forEach((pair) => {
+                const pairId = 'pair_' + Math.random().toString(36).substr(2, 9);
+                // 存储完整的配对信息以便纠错
+                items.push({ text: pair.char, pid: pairId, type: 'char', pinyin: pair.py, char: pair.char });
+                items.push({ text: pair.py, pid: pairId, type: 'py', pinyin: pair.py, char: pair.char });
+            });
+
+            items.sort(() => Math.random() - 0.5);
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerText = item.text;
+                div.onclick = () => handleSelect(div, item);
+                container.appendChild(div);
+            });
+        }
+
+        function handleSelect(div, item) {
+            if (!isGameRunning || div.classList.contains('selected') || selectedCards.length >= 2) return;
+            
+            div.classList.add('selected');
+            selectedCards.push({ div, item });
+
+            if (selectedCards.length === 2) {
+                const [s1, s2] = selectedCards;
+                if (s1.item.pid === s2.item.pid && s1.div !== s2.div) {
+                    // 成功
+                    document.getElementById('snd-melt').play();
+                    setTimeout(() => {
+                        s1.div.style.visibility = 'hidden';
+                        s2.div.style.visibility = 'hidden';
+                        selectedCards = [];
+                        checkProgress();
+                    }, 400);
+                } else {
+                    // 失败
+                    document.getElementById('snd-wrong').play();
+                    errorSet.add(s1.item.char);
+                    
+                    wrongCountMap[s1.item.pid] = (wrongCountMap[s1.item.pid] || 0) + 1;
+                    
+                    setTimeout(() => {
+                        if (wrongCountMap[s1.item.pid] >= 2) {
+                            showCorrection(s1.item);
+                        } else {
+                            s1.div.classList.remove('selected');
+                            s2.div.classList.remove('selected');
+                            selectedCards = [];
+                        }
+                    }, 500);
+                }
+            }
+        }
+
+        function showCorrection(item) {
+            isGameRunning = false; // 暂停游戏交互
+            document.getElementById('correct-char').innerText = item.char;
+            document.getElementById('correct-pinyin').innerText = item.pinyin;
+            document.getElementById('correction-overlay').classList.remove('hidden');
+        }
+
+        function closeCorrection() {
+            document.getElementById('correction-overlay').classList.add('hidden');
+            // 重置当前选择的卡片
+            selectedCards.forEach(c => c.div.classList.remove('selected'));
+            selectedCards = [];
+            isGameRunning = true; // 恢复游戏
+        }
+
+        function checkProgress() {
+            const visible = Array.from(document.querySelectorAll('.card')).filter(c => c.style.visibility !== 'hidden');
+            if (visible.length === 0) {
+                if (quizPool.length > 0) renderBatch();
+                else finish();
+            }
+        }
+
+        function finish() {
+            isGameRunning = false;
+            document.getElementById('game-board').classList.add('hidden');
+            document.getElementById('finish-screen').classList.remove('hidden');
+            
+            const timeStr = Math.floor((new Date() - startTime) / 1000) + "秒";
+            const errorsStr = Array.from(errorSet).join(', ') || "无";
+
+            const fd = new FormData();
+            fd.append("entry.24104562", document.title);
+            fd.append("entry.178626966", currentUser);
+            fd.append("entry.1112503934", errorsStr); 
+            fd.append("entry.1751911239", timeStr);
+            
+            fetch(CONFIG.formURL, { method: "POST", mode: "no-cors", body: fd });
+        }
+    </script>
+</body>
+</html>
