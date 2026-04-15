@@ -55,7 +55,7 @@
     </div>
 
     <div id="header" class="hidden text-center mb-6 glass p-6 rounded-3xl shadow-lg w-full max-w-4xl relative z-10 border-b-8 border-blue-200 mt-12">
-        <h1 class="text-3xl font-black text-blue-900 mb-2">《雪》练习二</h1>
+        <h1 class="text-3xl font-black text-blue-900 mb-2">《四是四》练习三</h1>
         <p class="text-lg text-gray-700 font-bold">听读音，选字组词。<br>Listen to the recording, and then choose the right characters to make the words.</p>
     </div>
 
@@ -112,7 +112,7 @@
         let selectedChars = "";
         let selectedCards = [];
         let attemptCount = 0;
-        let timer = 15;
+        let timer = 20;
         let timerInterval;
         let wrongWords = [];
         let userName = "";
@@ -260,7 +260,7 @@
         }
 
         function resetTimer() {
-            timer = 15; updateTimerUI();
+            timer = 20; updateTimerUI();
             clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 timer--; updateTimerUI();
