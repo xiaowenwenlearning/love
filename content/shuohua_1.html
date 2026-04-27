@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《说话》练习一</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background-image: url('../img/bg1.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .hidden { display: none; }
+        @keyframes trophy-bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.1); }
+        }
+        .animate-trophy { animation: trophy-bounce 1.5s infinite ease-in-out; }
+        .option-btn { transition: all 0.2s ease; }
+        .option-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 font-sans">
+
+    <div id="start-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+        <div class="text-center">
+            <div id="loading-status" class="text-white mb-4 text-xl">正在加载表格数据...</div>
+            <button id="start-btn" class="hidden bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-3xl font-bold px-16 py-8 rounded-full shadow-2xl transform transition hover:scale-105">
+                点击开始练习 🚀<br><span class="text-sm block mt-2">Start Practice</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="header-area" class="text-center mb-6 glass-morphism p-6 rounded-2xl shadow-lg w-full max-w-2xl">
+        <h1 id="practice-title" class="text-4xl font-black text-blue-900 mb-2">载入中...</h1>
+        <p class="text-xl text-gray-700 font-bold">听一听，选一选。Please listen and choose.</p>
+    </div>
+
+    <div class="w-full max-w-md bg-gray-300 rounded-full h-4 mb-8 shadow-inner overflow-hidden">
+        <div id="progress-bar" class="bg-green-500 h-full transition-all duration-500" style="width: 0%"></div>
+    </div>
+
+    <div id="quiz-container" class="glass-morphism p-10 rounded-[3rem] shadow-2xl w-full max-w-4xl text-center relative border-8 border-white">
+        <div id="timer" class="absolute top-6 right-10 text-red-600 font-black text-3xl italic">10s</div>
+        <div id="options-grid" class="flex justify-center items-center gap-8 my-16 flex-wrap"></div>
+        <div class="mt-4">
+            <button id="replay-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-12 py-5 rounded-full font-bold text-2xl shadow-xl flex items-center mx-auto transition-all active:scale-95">
+                <span class="mr-3 text-3xl">🔊</span> 重播 (Replay)
+            </button>
+        </div>
+    </div>
+
+    <div id="review-container" class="hidden glass-morphism p-12 rounded-[3rem] shadow-2xl w-full max-w-3xl text-center border-8 border-red-100">
+        <h2 class="text-3xl font-black text-red-600 mb-6 underline decoration-wavy">错题回顾 Review</h2>
+        <div id="review-content" class="text-[12rem] leading-none mb-10 text-blue-900 font-bold drop-shadow-lg"></div>
+        <button id="next-review-btn" class="bg-green-500 hover:bg-green-600 text-white px-16 py-6 rounded-3xl text-3xl font-black shadow-2xl transform transition active:scale-90">确认 (Next)</button>
+    </div>
+
+    <div id="success-container" class="hidden text-center mt-4 glass-morphism p-12 rounded-[4rem] border-8 border-yellow-400 shadow-2xl max-w-2xl">
+        <div class="text-[12rem] animate-trophy mb-6 drop-shadow-xl">🏆</div>
+        <h2 class="text-6xl font-black text-orange-600 mb-4">太棒了！</h2>
+        <p id="final-report" class="text-xl text-gray-800 mb-8 font-bold"></p>
+        <div class="flex flex-col items-center gap-6">
+            <div class="bg-green-100 text-green-700 py-3 px-10 rounded-full font-black border-4 border-green-500 inline-block animate-pulse">✅ 作业已记录并自动提交</div>
+            <a href="../index.html" class="bg-gray-800 hover:bg-black text-white px-12 py-4 rounded-2xl text-xl font-bold shadow-lg transition-colors flex items-center">🏠 回主页 (Back to Home)</a>
+        </div>
+    </div>
+
+    <audio id="snd-correct" src="../audio/correct.mp3"></audio>
+    <audio id="snd-wrong" src="../audio/wrong.mp3"></audio>
+    <audio id="snd-cheer" src="../audio/cheer.mp3"></audio>
+
+    <script>
+        // ================= CONFIG 配置区 =================
+        let config = {
+            title: "《说话》练习一",
+            questions: [], // 初始为空，由 Excel 填充
+            googleFormURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse", 
+            entryIDs: {
+                title: "entry.24104562",   // 请替换为真实的entry ID
+                name: "entry.178626966",    
+                errors: "entry.1112503934",  
+                time: "entry.1751911239"     
+            }
+        };
+
+        let currentIdx = 0;
+        let timer = 20;
+        let timerInterval;
+        let wrongWords = [];
+        let userName = "";
+        const synth = window.speechSynthesis;
+
+        // === 新增：Excel 加载逻辑 ===
+        async function loadExcelData() {
+            try {
+                const response = await fetch('table1.xlsx');
+                if (!response.ok) throw new Error("无法找到 Excel 文件");
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer);
+                
+                // 读取第一个工作表
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                // 转换为矩阵格式 (header: 1)
+                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // 过滤掉空行，并转换成题目格式
+                // 假设 A:答案, B/C/D: 选项
+                config.questions = rawData
+                    .filter(row => row.length >= 4) // 确保行内有足够的数据
+                    .slice(73, 88) // 左开右闭
+                    .map(row => ({
+                        answer: String(row[0]),
+                        options: [String(row[1]), String(row[2]), String(row[3])]
+                    }));
+
+                // 显示开始按钮，隐藏加载提示
+                document.getElementById('loading-status').classList.add('hidden');
+                document.getElementById('start-btn').classList.remove('hidden');
+                document.getElementById('practice-title').innerText = config.title;
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading-status').innerText = "❌ 载入失败：请确保 content/table1.xlsx 存在且在服务器环境运行";
+                document.getElementById('loading-status').classList.add('text-red-500');
+            }
+        }
+
+        // ================= 核心流程 =================
+
+        document.getElementById('start-btn').onclick = () => {
+            userName = prompt("请输入你的名字 (Enter your name):") || "匿名学生";
+            document.getElementById('start-overlay').classList.add('hidden');
+            loadQuestion();
+        };
+
+        function loadQuestion() {
+            if (currentIdx >= config.questions.length) {
+                startReview();
+                return;
+            }
+
+            const q = config.questions[currentIdx];
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            
+            document.getElementById('progress-bar').style.width = `${(currentIdx / config.questions.length) * 100}%`;
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn bg-white border-4 border-blue-200 text-4xl p-10 rounded-[2.5rem] shadow-lg hover:border-blue-500 hover:bg-blue-50 font-black text-gray-800 min-w-[220px]";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(opt);
+                grid.appendChild(btn);
+            });
+
+            setTimeout(() => {
+                speak(q.answer);
+                startTimer();
+            }, 600);
+        }
+
+        // ... (保持 speak, startTimer, checkAnswer, handleWrong, playFeedback 等后续函数不变) ...
+        // 注意：为了篇幅，此处省略了你原代码中未改动的后续逻辑，请确保它们完整保留在你的文件中。
+        
+        function speak(text, rate = 0.85) {
+            synth.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = rate;
+            synth.speak(utterance);
+        }
+
+        function startTimer() {
+            timer = 20;
+            document.getElementById('timer').innerText = `${timer}s`;
+            document.getElementById('timer').classList.remove('scale-125');
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--;
+                document.getElementById('timer').innerText = `${timer}s`;
+                if(timer <= 3) document.getElementById('timer').classList.add('scale-125');
+                if (timer <= 0) handleWrong();
+            }, 1000);
+        }
+
+        function checkAnswer(selected) {
+            clearInterval(timerInterval);
+            const correct = config.questions[currentIdx].answer;
+            if (selected === correct) {
+                playFeedback(true);
+                currentIdx++;
+                setTimeout(loadQuestion, 1200);
+            } else {
+                handleWrong();
+            }
+        }
+
+        function handleWrong() {
+            clearInterval(timerInterval);
+            playFeedback(false);
+            wrongWords.push(config.questions[currentIdx].answer);
+            currentIdx++;
+            setTimeout(loadQuestion, 1200);
+        }
+
+        function playFeedback(isCorrect) {
+            const id = isCorrect ? 'snd-correct' : 'snd-wrong';
+            document.getElementById(id).play().catch(()=>{});
+        }
+
+        let reviewIdx = 0;
+        function startReview() {
+            if (wrongWords.length === 0) {
+                finishAll();
+                return;
+            }
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('review-container').classList.remove('hidden');
+            showReviewItem();
+        }
+
+        function showReviewItem() {
+            const word = wrongWords[reviewIdx];
+            document.getElementById('review-content').innerText = word;
+            let count = 0;
+            const repeatSpeak = () => {
+                if(count < 3) {
+                    speak(word, 0.7);
+                    count++;
+                    if(count < 3) setTimeout(repeatSpeak, 2000);
+                }
+            };
+            repeatSpeak();
+
+            document.getElementById('next-review-btn').onclick = () => {
+                reviewIdx++;
+                if (reviewIdx < wrongWords.length) {
+                    showReviewItem();
+                } else {
+                    finishAll();
+                }
+            };
+        }
+
+        function finishAll() {
+            document.getElementById('review-container').classList.add('hidden');
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('success-container').classList.remove('hidden');
+            document.getElementById('snd-cheer').play().catch(()=>{});
+            const errorList = wrongWords.join(', ') || '无';
+            document.getElementById('final-report').innerText = `学生：${userName} | 错词清单：${errorList}`;
+            submitToGoogleForm(errorList);
+        }
+
+        function submitToGoogleForm(errorList) {
+            const now = new Date().toLocaleString();
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = config.googleFormURL;
+            form.target = 'hidden_iframe';
+            form.style.display = 'none';
+            const data = {
+                [config.entryIDs.title]: config.title,
+                [config.entryIDs.name]: userName,
+                [config.entryIDs.errors]: errorList,
+                [config.entryIDs.time]: now
+            };
+            for (const key in data) {
+                const input = document.createElement('input');
+                input.name = key;
+                input.value = data[key];
+                form.appendChild(input);
+            }
+            const iframe = document.createElement('iframe');
+            iframe.name = 'hidden_iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        document.getElementById('replay-btn').onclick = () => {
+            speak(config.questions[currentIdx].answer);
+        };
+
+        // 启动加载
+        loadExcelData();
+    </script>
+</body>
+</html>
