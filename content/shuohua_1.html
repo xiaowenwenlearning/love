@@ -120,7 +120,7 @@
                 // 假设 A:答案, B/C/D: 选项
                 config.questions = rawData
                     .filter(row => row.length >= 4) // 确保行内有足够的数据
-                    .slice(73, 88) // 左开右闭
+                    .slice(89, 104) // 左开右闭
                     .map(row => ({
                         answer: String(row[0]),
                         options: [String(row[1]), String(row[2]), String(row[3])]
