@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《说话》练习三</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-image: url('../img/bg1.jpg'); background-size: cover; background-attachment: fixed; }
+        .glass { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 2px solid white; }
+        .char-card { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; user-select: none; }
+        .char-hidden { opacity: 0 !important; pointer-events: none !important; transform: scale(0.5); }
+        .wrong-shake { animation: shake 0.5s; background-color: #fee2e2 !important; border-color: #ef4444 !important; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(10px); } }
+        .big-flower { font-size: 15rem; animation: pulse 1.5s infinite; display: inline-block; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .hidden { display: none; }
+        #answer-overlay { animation: zoomIn 0.5s ease-out; text-shadow: 0 0 20px rgba(234, 179, 8, 0.6); }
+        @keyframes zoomIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        /* 返回主页按钮样式 */
+        .home-btn { 
+            position: fixed; top: 1.5rem; left: 1.5rem; z-index: 5000;
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(5px);
+            padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: 800;
+            color: #1e40af; border: 2px solid #bfdbfe; transition: all 0.2s;
+        }
+        .home-btn:hover { background: #eff6ff; transform: scale(1.05); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <a href="../index.html" class="home-btn flex items-center gap-2 shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        </svg>
+        主页 Home
+    </a>
+
+    <div id="login-overlay" class="fixed inset-0 z-[2000] flex items-center justify-center bg-black bg-opacity-90">
+        <div class="glass p-10 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full border-t-8 border-blue-500">
+            <h2 class="text-3xl font-black text-blue-900 mb-6">学生登录</h2>
+            <input type="text" id="login-name" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-4 text-center text-xl font-bold outline-none focus:border-blue-500" placeholder="姓名 Name">
+            <input type="password" id="login-pass" class="w-full p-4 border-2 border-blue-100 rounded-xl mb-6 text-center text-xl font-bold outline-none focus:border-blue-500" placeholder="密码 Password">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl text-xl shadow-lg active:scale-95 transition-all">确认进入</button>
+        </div>
+    </div>
+
+    <div id="answer-tip" class="hidden fixed inset-0 z-[4000] flex items-center justify-center bg-white bg-opacity-80">
+        <div id="answer-overlay" class="text-center p-12 rounded-full glass border-8 border-yellow-400">
+            <p class="text-3xl font-bold text-gray-500 mb-4">正确答案是：</p>
+            <p id="correct-text" class="text-9xl font-black text-yellow-600 tracking-widest"></p>
+        </div>
+    </div>
+
+    <div id="header" class="hidden text-center mb-6 glass p-6 rounded-3xl shadow-lg w-full max-w-4xl relative z-10 border-b-8 border-blue-200 mt-12">
+        <h1 class="text-3xl font-black text-blue-900 mb-2">《说话》练习三</h1>
+        <p class="text-lg text-gray-700 font-bold">听读音，选字组词或成句。<br>Listen to the recording, and then choose the right characters to make the words or sentences.</p>
+    </div>
+
+    <div id="game-area" class="hidden w-full max-w-5xl flex flex-col items-center">
+        <div class="flex justify-between w-full mb-6 px-4 items-center">
+            <div id="timer-display" class="text-4xl font-black text-red-600 bg-white px-8 py-2 rounded-full shadow-md min-w-[120px] text-center italic border-4 border-red-50">15s</div>
+            <button id="start-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-16 py-4 rounded-full font-black text-2xl shadow-xl animate-bounce">开始 Start</button>
+            <button id="replay-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full font-black text-lg shadow-lg">🔊 重读</button>
+        </div>
+        <div id="pool-container" class="flex flex-wrap justify-center gap-4 w-full p-8 min-h-[300px]"></div>
+        <div class="w-full mt-10 p-6 border-t-4 border-dashed border-blue-200 text-center">
+            <div id="result-shelf" class="flex flex-wrap justify-center gap-4"></div>
+        </div>
+    </div>
+
+    <div id="celebration" class="hidden fixed inset-0 z-[3000] glass flex flex-col items-center justify-center text-center p-6">
+        <div class="big-flower">🌹</div>
+        <h2 class="text-6xl font-black text-red-600 mb-4 mt-8">太棒啦！天花板！</h2>
+        <p id="final-summary" class="text-2xl font-bold text-gray-700 mb-10"></p>
+        <div class="flex gap-4">
+            <button onclick="submitToGoogle()" class="bg-red-600 hover:bg-red-700 text-white px-12 py-5 rounded-2xl text-3xl font-black shadow-2xl transition-transform active:scale-95">提交 Submit</button>
+            <a href="../index.html" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-12 py-5 rounded-2xl text-3xl font-black shadow-xl flex items-center">返回 Back</a>
+        </div>
+    </div>
+
+    <audio id="snd-correct" src="../audio/correct.mp3"></audio>
+    <audio id="snd-wrong" src="../audio/wrong.mp3"></audio>
+    <audio id="snd-cheer" src="../audio/cheer.mp3"></audio>
+
+    <script>
+        const userDatabase = { "Oliver": "168","LucasZhang": "168","Victoria": "168",
+							  "Emma": "168","Ethan": "168","Chloe": "168","Sophie": "168","Alex": "168","Yvonna": "168", 
+							  "Wenwen": "168", "LucasLi": "168" };
+        const config = {
+            excelPath: 'table1.xlsx',
+            sheetIndex: 1, 
+            rangeConfig: {
+                round1: { col: 'A', startRow: 34, endRow: 38 },
+                round2: { col: 'B', startRow: 34, endRow: 38 },
+				round3: { col: 'C', startRow: 2, endRow: 5 }
+            },
+            formURL: "https://docs.google.com/forms/d/e/1FAIpQLSck-tx8Vl6ERhptYGPhSd7vUYcKqLif8RGb4LI5GK2goW9OpA/formResponse", 
+            entryIDs: {
+                title: "entry.24104562",   // 请替换为真实的entry ID
+                name: "entry.178626966",    
+                errors: "entry.1112503934",  
+                time: "entry.1751911239"     
+            }
+        };
+
+        let roundWords = { round1: [], round2: [], round3: [] };
+        let currentRoundKey = "round1";
+        let currentWordIdx = 0;
+        let selectedChars = "";
+        let selectedCards = [];
+        let attemptCount = 0;
+        let timer = 30;
+        let timerInterval;
+        let wrongWords = [];
+        let userName = "";
+        let gameStartTime;
+
+        async function handleLogin() {
+            const name = document.getElementById('login-name').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            if (userDatabase[name] === pass) {
+                userName = name;
+                try {
+                    await loadExcelData();
+                    if (roundWords.round1.length === 0) { alert("表格数据为空"); return; }
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    document.getElementById('header').classList.remove('hidden');
+                    document.getElementById('game-area').classList.remove('hidden');
+                    initRound();
+                } catch (e) { alert("加载失败，请确保使用 Live Server 运行。"); }
+            } else { alert("密码错误！"); }
+        }
+
+        async function loadExcelData() {
+            const response = await fetch(config.excelPath);
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[config.sheetIndex]];
+            for (let rKey in config.rangeConfig) {
+                const r = config.rangeConfig[rKey];
+                roundWords[rKey] = [];
+                for (let i = r.startRow; i <= r.endRow; i++) {
+                    const cell = sheet[r.col + i];
+                    if (cell && cell.v) roundWords[rKey].push(String(cell.v).trim());
+                }
+            }
+        }
+
+        function initRound() {
+            const words = roundWords[currentRoundKey];
+            if (!words || words.length === 0) return showCelebration();
+            const allChars = words.join('').split('').sort(() => Math.random() - 0.5);
+            const container = document.getElementById('pool-container');
+            container.innerHTML = '';
+            allChars.forEach(char => {
+                const card = document.createElement('div');
+                card.className = "char-card bg-white w-20 h-20 rounded-2xl shadow-lg flex items-center justify-center text-4xl font-black text-blue-900 border-4 border-blue-50";
+                card.innerText = char;
+                card.onclick = () => handleCharClick(card);
+                container.appendChild(card);
+            });
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('replay-btn').classList.add('hidden');
+            gameStartTime = gameStartTime || Date.now();
+        }
+
+        document.getElementById('start-btn').onclick = function() {
+            this.classList.add('hidden');
+            document.getElementById('replay-btn').classList.remove('hidden');
+            startQuestion();
+        };
+
+        function startQuestion() {
+            const words = roundWords[currentRoundKey];
+            if (currentWordIdx >= words.length) {
+                if (currentRoundKey === "round1" && roundWords.round2.length > 0) {
+                    currentRoundKey = "round2"; currentWordIdx = 0;
+                    alert("第二轮练习开始！"); initRound();
+                } else { showCelebration(); }
+                return;
+            }
+            selectedChars = ""; selectedCards = []; attemptCount = 0;
+            playVoice(words[currentWordIdx], 2);
+            resetTimer();
+        }
+
+        function handleCharClick(card) {
+            if (timer <= 0 || document.getElementById('start-btn').offsetParent !== null || card.classList.contains('char-hidden')) return;
+            const char = card.innerText;
+            const target = roundWords[currentRoundKey][currentWordIdx];
+            if (char === target[selectedChars.length]) {
+                selectedChars += char;
+                selectedCards.push(card);
+                card.classList.add('opacity-30', 'pointer-events-none');
+                if (selectedChars === target) handleCorrect(target, false);
+            } else { handleWrong(); }
+        }
+
+        function handleCorrect(word, isFromError) {
+            clearInterval(timerInterval);
+            if (!isFromError) document.getElementById('snd-correct').play().catch(()=>{});
+            selectedCards.forEach(card => {
+                card.classList.remove('opacity-30', 'pointer-events-none');
+                card.classList.add('char-hidden');
+            });
+            const shelf = document.getElementById('result-shelf');
+            const div = document.createElement('div');
+            const colorClass = isFromError ? "bg-yellow-400 text-blue-900" : "bg-green-500 text-white";
+            div.className = `${colorClass} px-6 py-2 rounded-full font-black text-2xl shadow-lg animate-bounce`;
+            div.innerText = word;
+            shelf.appendChild(div);
+            currentWordIdx++;
+            setTimeout(startQuestion, 1200);
+        }
+
+        function handleWrong() {
+            clearInterval(timerInterval);
+            document.getElementById('snd-wrong').play().catch(()=>{});
+            attemptCount++;
+            selectedCards.forEach(card => card.classList.remove('opacity-30', 'pointer-events-none'));
+            selectedChars = "";
+            selectedCards = [];
+            document.querySelectorAll('.char-card:not(.char-hidden)').forEach(c => {
+                c.classList.add('wrong-shake');
+                setTimeout(() => c.classList.remove('wrong-shake'), 500);
+            });
+            const target = roundWords[currentRoundKey][currentWordIdx];
+            if (attemptCount >= 2) {
+                wrongWords.push(target);
+                showBigAnswer(target);
+            } else {
+                setTimeout(() => { playVoice(target, 1); resetTimer(); }, 1000);
+            }
+        }
+
+        function showBigAnswer(word) {
+            const tip = document.getElementById('answer-tip');
+            const text = document.getElementById('correct-text');
+            text.innerText = word;
+            tip.classList.remove('hidden');
+            speak(word);
+            setTimeout(() => {
+                tip.classList.add('hidden');
+                autoEliminate(word);
+                handleCorrect(word, true);
+            }, 2000);
+        }
+
+        function autoEliminate(target) {
+            let charsToFind = target.split('');
+            selectedCards = [];
+            const allCards = Array.from(document.querySelectorAll('.char-card:not(.char-hidden)'));
+            charsToFind.forEach(char => {
+                const found = allCards.find(c => c.innerText === char && !selectedCards.includes(c));
+                if (found) selectedCards.push(found);
+            });
+        }
+
+        function resetTimer() {
+            timer = 30; updateTimerUI();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--; updateTimerUI();
+                if (timer <= 0) handleWrong();
+            }, 1000);
+        }
+        function updateTimerUI() { document.getElementById('timer-display').innerText = `${timer}s`; }
+        function speak(t) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(t);
+            u.lang = 'zh-CN'; u.rate = 0.8;
+            window.speechSynthesis.speak(u);
+        }
+        function playVoice(text, times) {
+            let c = 0;
+            const r = () => { if(c < times) { speak(text); c++; if(c < times) setTimeout(r, 1600); } };
+            r();
+        }
+
+        function showCelebration() {
+            clearInterval(timerInterval);
+            document.getElementById('celebration').classList.remove('hidden');
+            const totalS = Math.floor((Date.now() - gameStartTime)/1000);
+            document.getElementById('final-summary').innerText = `学生：${userName} | 总耗时：${totalS}秒 | 错词：${wrongWords.join(', ') || '全对！'}`;
+            speak("太棒啦！天花板！");
+            document.getElementById('snd-cheer').play().catch(()=>{});
+        }
+
+        function submitToGoogle() {
+            const totalS = Math.floor((Date.now() - gameStartTime)/1000);
+            const data = {
+                [config.entryIDs.title]: "《说话》练习三",
+                [config.entryIDs.name]: userName,
+                [config.entryIDs.errors]: wrongWords.join(', ') || '全对',
+                [config.entryIDs.time]: `${totalS}s`
+            };
+            const form = document.createElement('form');
+            form.method = 'POST'; form.action = config.formURL; form.target = 'hid_ifr';
+            for(let k in data) { let i = document.createElement('input'); i.name=k; i.value=data[k]; form.appendChild(i); }
+            const ifr = document.createElement('iframe'); ifr.name='hid_ifr'; ifr.style.display='none';
+            document.body.appendChild(ifr); document.body.appendChild(form);
+            form.submit();
+            alert("提交成功！Submitted!");
+        }
+
+        document.getElementById('replay-btn').onclick = () => speak(roundWords[currentRoundKey][currentWordIdx]);
+    </script>
+</body>
+</html>
+
