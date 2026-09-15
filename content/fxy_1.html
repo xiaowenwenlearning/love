@@ -96,7 +96,7 @@
         };
 
         let currentIdx = 0;
-        let timer = 18;
+        let timer = 15;
         let timerInterval;
         let wrongWords = [];
         let userName = "";
@@ -184,7 +184,7 @@
         }
 
         function startTimer() {
-            timer = 10;
+            timer = 15;
             document.getElementById('timer').innerText = `${timer}s`;
             document.getElementById('timer').classList.remove('scale-125');
             clearInterval(timerInterval);
