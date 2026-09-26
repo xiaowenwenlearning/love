@@ -54,29 +54,42 @@
         .row-title {
             font-size: 16px;
             color: #d81b60;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: bold;
             text-align: left;
         }
-        .card-container {
+
+        /* 第一排汉字：完美居中分布，允许换行 */
+        .card-container-row1 {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            align-items: center;
             gap: 12px;
+            padding: 5px 0;
+        }
+
+        /* 第二、三排组合卡片：居中均匀分布 */
+        .card-container-row23 {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 5px 0;
         }
 
         /* 汉字卡片/槽位样式 */
         .slot, .card {
-            min-width: 65px;
+            width: 65px;
             height: 65px;
-            padding: 0 10px;
             background: #fff;
             border: 3px solid #ff4081;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
+            font-size: 28px;
             font-weight: bold;
             color: #333;
             cursor: pointer;
@@ -88,17 +101,17 @@
         .slot { background: #f8bbd0; border-style: dashed; color: #880e4f; }
         .slot.filled { background: #e1bee7; border-style: solid; border-color: #8e24aa; }
 
-        /* 组词组合卡片样式（包含括号与固定字） */
+        /* 组词组合卡片样式（括号与固定字） */
         .word-group-box {
             display: flex;
             align-items: center;
             background: #fff;
             border: 2px solid #ab47bc;
             border-radius: 12px;
-            padding: 8px 12px;
-            gap: 8px;
+            padding: 8px 14px;
+            gap: 10px;
             box-shadow: 0 3px 0 #7b1fa2;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: bold;
             color: #4a148c;
         }
@@ -158,45 +171,45 @@
     <div id="game-container" class="hidden">
         <div id="instruction">
             <h2 style="color:#d81b60;">欢迎来到闯关游戏！</h2>
-            <p style="color:#555; font-size: 18px;">规则：在2分钟内，将第一排的汉字填入下方的括号中进行正确组词！</p>
+            <p style="color:#555; font-size: 18px;">规则：在2分钟内完成当前页的组词，做完所有5页后才会进行最终结算！</p>
             <button class="btn" style="font-size:24px; padding:15px 40px;" onclick="startGame()">开始闯关 GO!</button>
         </div>
 
         <div id="game-board" class="hidden">
             <div class="hud">
-                <span id="level-indicator">当前关卡: 第 1 页</span>
+                <span id="level-indicator">当前进度: 第 1 / 5 页</span>
                 <span id="timer">剩余时间: 02:00</span>
             </div>
 
-            <!-- 第一排：十个汉字 (固定展示) -->
+            <!-- 第一排：待选汉字（居中分布、自动换行） -->
             <div class="row-section">
                 <div class="row-title">📌 第一排：待选汉字（点击选择）</div>
-                <div id="row1-container" class="card-container"></div>
+                <div id="row1-container" class="card-container-row1"></div>
             </div>
 
-            <!-- 第二排：安排第1个固定字及对应的独立括号组合 -->
+            <!-- 第二排：第1个固定字及所有组合 -->
             <div class="row-section">
                 <div class="row-title" id="row2-title">🧩 第二排组词练习</div>
-                <div id="row2-container" class="card-container"></div>
+                <div id="row2-container" class="card-container-row23"></div>
             </div>
 
-            <!-- 第三排：安排第2个固定字及对应的独立括号组合 -->
+            <!-- 第三排：第2个固定字及所有组合 -->
             <div class="row-section">
                 <div class="row-title" id="row3-title">🧩 第三排组词练习</div>
-                <div id="row3-container" class="card-container"></div>
+                <div id="row3-container" class="card-container-row23"></div>
             </div>
             
-            <button class="btn" style="margin-top: 15px; background: #ab47bc;" onclick="checkAnswers()">提交本页答案并进入下一页</button>
+            <button class="btn" style="margin-top: 15px; background: #ab47bc;" onclick="nextPage()">进入下一页 🚀</button>
         </div>
 
-        <!-- 过关庆祝界面 -->
+        <!-- 最终总结算界面 -->
         <div id="finish-screen" class="hidden">
             <div class="avatar-container">
                 <span>🐱</span><span>🦄</span><span>🌸</span><span>⭐</span><span>🍦</span>
             </div>
-            <h1 style="color:#e91e63; font-size: 36px;">🎉 太棒了！本页顺利过关！ 🎉</h1>
+            <h1 style="color:#e91e63; font-size: 36px;">🎉 太棒了！全部5页顺利通关！ 🎉</h1>
             <p id="praise-text" style="font-size: 22px; color: #880e4f; font-weight: bold; margin: 15px 0;"></p>
-            <button class="btn" style="background: #4caf50; font-size: 22px;" onclick="nextPage()">进入下一页 🚀</button>
+            <button class="btn" style="background: #4caf50; font-size: 22px;" onclick="location.reload()">再玩一次 🔄</button>
         </div>
     </div>
 
@@ -206,15 +219,15 @@
 
     <script>
         const CONFIG = {
-            csvPath: 'new.csv',          // 本地CSV路径
-            userPath: '../user/use.txt',     // 账号密码文件路径
+            csvPath: 'new.csv',          
+            userPath: '../user/use.txt',     
             startRow: 1,                     
             colIndex: 1,                     
             maxRows: 13                      
         };
 
         let currentUser = "";
-        let pagesData = [];  // 切分后的页面关卡数据
+        let pagesData = [];  // 共5页
         let currentPageIdx = 0;
         let timerInterval = null;
         let timeLeft = 120;   
@@ -247,7 +260,6 @@
             }
         }
 
-        // 解析CSV：每4行为一组，并将10个固定字拆分为多页（每页2个固定字，分别在第二排和第三排）
         async function loadCSVLevels() {
             try {
                 const resp = await fetch(CONFIG.csvPath);
@@ -265,7 +277,7 @@
                     const row2Pos = rows[i+2].slice(1, 11).map(s => s?.trim());
                     const row2Ans = rows[i+3].slice(1, 11).map(s => s?.trim());
 
-                    // 每10个固定字对应10列，每页安排2个固定字，因此共需 5 页
+                    // 10个固定字按每页2个，刚好分为 5 页
                     for (let col = 0; col < 10; col += 2) {
                         const subItems = [];
                         for (let c = col; c < col + 2 && c < 10; c++) {
@@ -273,7 +285,6 @@
                             if (!base) continue;
                             const pos = (row2Pos[c] || 'L').toUpperCase();
                             const answersStr = row2Ans[c] || '';
-                            // 答案可能由逗号分隔多个，例如 "开, 花果车" 或 "阳春开水"
                             const ansList = answersStr.split(/[,，]/).map(s => s.trim()).filter(s => s);
 
                             subItems.push({
@@ -286,7 +297,7 @@
                         if (subItems.length > 0) {
                             pagesData.push({
                                 row1: row1,
-                                items: subItems // 包含当前页要考查的2个固定字及其独立组合
+                                items: subItems 
                             });
                         }
                     }
@@ -306,20 +317,14 @@
             document.getElementById('instruction').classList.add('hidden');
             document.getElementById('game-board').classList.remove('hidden');
             loadPage(currentPageIdx);
+            startTimer();
         }
 
-        // 加载某一页
         function loadPage(idx) {
-            if (idx >= pagesData.length) {
-                alert("恭喜您完成了所有页面的闯关！");
-                location.reload();
-                return;
-            }
-
             const pageData = pagesData[idx];
-            document.getElementById('level-indicator').innerText = `当前关卡: 第 ${idx + 1} / ${pagesData.length} 页`;
+            document.getElementById('level-indicator').innerText = `当前进度: 第 ${idx + 1} / ${pagesData.length} 页`;
 
-            // 渲染第一排待选字
+            // 第一排待选汉字（居中自适应换行）
             const r1Container = document.getElementById('row1-container');
             r1Container.innerHTML = '';
             pageData.row1.forEach(char => {
@@ -334,29 +339,25 @@
                 r1Container.appendChild(card);
             });
 
-            // 渲染第二排与第三排（每排对应一个固定字及其独立的多个组合括号）
+            // 第二排：第1个固定字及所有组合
             renderRowWithSlots('row2-container', 'row2-title', pageData.items[0], '第二排');
+            
+            // 第三排：第2个固定字及所有组合
             if (pageData.items[1]) {
                 renderRowWithSlots('row3-container', 'row3-title', pageData.items[1], '第三排');
             } else {
                 document.getElementById('row3-container').innerHTML = '<span style="color:#888;">本页无更多固定字</span>';
                 document.getElementById('row3-title').innerText = '第三排组词练习';
             }
-
-            startTimer();
         }
 
-        // 根据位置生成独立的括号+固定字组合（例如 ( )水 或 水( )，若LR则生成两个方向的独立卡片）
         function renderRowWithSlots(containerId, titleId, itemData, rowName) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
             document.getElementById(titleId).innerText = `${rowName}组词（固定字：${itemData.base}）`;
 
-            // 根据该固定字的 pos（如 L, R, LR）以及对应的答案数量生成对应的组合框
-            // 如果答案有多个，则每个答案拆分为独立的槽位组合
             itemData.answers.forEach((ans, ansIdx) => {
                 const pos = itemData.pos;
-                // 如果是 LR，可以根据需要按左右交替或全部生成
                 let actualPos = pos;
                 if (pos === 'LR') {
                     actualPos = (ansIdx % 2 === 0) ? 'L' : 'R';
@@ -426,28 +427,30 @@
             document.getElementById('timer').innerText = `剩余时间: ${m}:${s}`;
         }
 
-        function checkAnswers() {
-            clearInterval(timerInterval);
-            document.getElementById('snd-melt').currentTime = 0;
-            document.getElementById('snd-melt').play().catch(e => {});
-
-            document.getElementById('game-board').classList.add('hidden');
-            document.getElementById('finish-screen').classList.remove('hidden');
-
-            const praises = [
-                "太厉害了！本页全部顺利通关！🌟",
-                "真棒！老师为你点赞！👍",
-                "思维敏捷的小汉字专家，继续加油！🎉",
-                "答得太漂亮啦！向下一页出发！🎈"
-            ];
-            document.getElementById('praise-text').innerText = praises[Math.floor(Math.random() * praises.length)];
-        }
-
+        // 点击进入下一页，直到完成全部5页后才进入总结算
         function nextPage() {
             currentPageIdx++;
-            document.getElementById('finish-screen').classList.add('hidden');
-            document.getElementById('game-board').classList.remove('hidden');
-            loadPage(currentPageIdx);
+            if (currentPageIdx < pagesData.length) {
+                document.getElementById('snd-melt').currentTime = 0;
+                document.getElementById('snd-melt').play().catch(e => {});
+                loadPage(currentPageIdx);
+            } else {
+                // 全部5页做完后，触发最终总结算
+                clearInterval(timerInterval);
+                document.getElementById('snd-melt').currentTime = 0;
+                document.getElementById('snd-melt').play().catch(e => {});
+
+                document.getElementById('game-board').classList.add('hidden');
+                document.getElementById('finish-screen').classList.remove('hidden');
+
+                const praises = [
+                    "太厉害了！你顺利完成了全部5页闯关，是最棒的小汉字专家！🌟",
+                    "全部通关啦！老师为你竖起大拇指！👍",
+                    "哇塞，全部练习完美搞定，进步神速！🎉",
+                    "聪明的宝贝，所有的汉字都难不倒你！🎈"
+                ];
+                document.getElementById('praise-text').innerText = praises[Math.floor(Math.random() * praises.length)];
+            }
         }
     </script>
 </body>
