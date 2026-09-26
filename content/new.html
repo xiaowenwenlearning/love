@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>《汉字组词多巴胺乐园》</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+            background-attachment: fixed;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #login-box, #game-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+            margin-top: 30px;
+            text-align: center;
+            max-width: 950px;
+            width: 92%;
+        }
+
+        .hidden { display: none !important; }
+
+        .btn {
+            padding: 12px 35px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #ff4081;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4);
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); background: #f50057; }
+
+        /* 游戏区域布局：分为三排 */
+        .row-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: #fdfbfb;
+            border-radius: 15px;
+            border: 2px dashed #ff80ab;
+        }
+        .row-title {
+            font-size: 16px;
+            color: #d81b60;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* 汉字卡片/槽位样式 */
+        .slot, .card {
+            width: 65px;
+            height: 65px;
+            background: #fff;
+            border: 3px solid #ff4081;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #c51162;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        .card.selected { background: #ffeb3b; border-color: #fbc02d; transform: translateY(-3px); }
+        .slot { background: #f8bbd0; border-style: dashed; }
+        .slot.filled { background: #e1bee7; border-style: solid; border-color: #8e24aa; }
+
+        /* 计时器与关卡信息 */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ad1457;
+            margin-bottom: 15px;
+            background: #fce4ec;
+            padding: 10px 20px;
+            border-radius: 12px;
+        }
+
+        /* 过关庆祝层 */
+        #finish-screen {
+            text-align: center;
+            padding: 20px;
+        }
+        .avatar-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 50px;
+            margin: 20px 0;
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+
+        .footer-nav { position: fixed; bottom: 15px; width: 100%; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <!-- 音效文件引入 -->
+    <audio id="snd-melt" src="../audio/melt.MP3"></audio>
+    <audio id="snd-wrong" src="../audio/wrong.MP3"></audio>
+
+    <!-- 登录面板 (读取本地 use.txt) -->
+    <div id="login-box">
+        <h2 id="page-display-title" style="color: #d81b60;">🌟 汉字组词多巴胺乐园 🌟</h2>
+        <p style="color: #666;">请输入您的姓名和练习密码登录</p>
+        <div style="margin: 20px 0;">
+            <input type="text" id="username" placeholder="学生姓名 (如 Wenwen)" style="padding:12px; width:240px; border-radius:10px; border:2px solid #ff80ab; font-size:16px;"><br><br>
+            <input type="password" id="password" placeholder="练习密码 (如 168)" style="padding:12px; width:240px; border-radius:10px; border:2px solid #ff80ab; font-size:16px;">
+        </div>
+        <button class="btn" onclick="login()">确认登录 Start</button>
+    </div>
+
+    <!-- 游戏主容器 -->
+    <div id="game-container" class="hidden">
+        <div id="instruction">
+            <h2 style="color:#d81b60;">欢迎来到闯关游戏！</h2>
+            <p style="color:#555; font-size: 18px;">规则：在2分钟内，根据提示将待选汉字填入括号中正确组词！</p>
+            <button class="btn" style="font-size:24px; padding:15px 40px;" onclick="startGame()">开始闯关 GO!</button>
+        </div>
+
+        <div id="game-board" class="hidden">
+            <div class="hud">
+                <span id="level-indicator">当前关卡: 第 1 关</span>
+                <span id="timer">剩余时间: 02:00</span>
+            </div>
+
+            <!-- 第一排：十个汉字 (固定展示) -->
+            <div class="row-section">
+                <div class="row-title">📌 第一排：十个汉字（点击选择）</div>
+                <div id="row1-container" class="card-container"></div>
+            </div>
+
+            <!-- 第二排：配对汉字与括号 -->
+            <div class="row-section">
+                <div class="row-title">🧩 第二排：组词练习</div>
+                <div id="row2-container" class="card-container"></div>
+            </div>
+
+            <!-- 第三排：配对汉字与括号 -->
+            <div class="row-section">
+                <div class="row-title">🧩 第三排：组词练习</div>
+                <div id="row3-container" class="card-container"></div>
+            </div>
+            
+            <button class="btn" style="margin-top: 15px; background: #ab47bc;" onclick="checkAnswers()">提交本关答案</button>
+        </div>
+
+        <!-- 过关庆祝界面 -->
+        <div id="finish-screen" class="hidden">
+            <div class="avatar-container">
+                <span>🐱</span><span>🦄</span><span>🌸</span><span>⭐</span><span>🍦</span>
+            </div>
+            <h1 style="color:#e91e63; font-size: 36px;">🎉 太棒了！顺利过关！ 🎉</h1>
+            <p id="praise-text" style="font-size: 22px; color: #880e4f; font-weight: bold; margin: 15px 0;"></p>
+            <button class="btn" style="background: #4caf50; font-size: 22px;" onclick="nextLevel()">进入下一关 🚀</button>
+        </div>
+    </div>
+
+    <div class="footer-nav">
+        <button class="btn" style="background:#2196f3; padding: 8px 20px; font-size: 16px;" onclick="location.href='../index.html'">回主页 Home</button>
+    </div>
+
+    <script>
+        // 配置参数（模仿您提供的结构管理逻辑）
+        const CONFIG = {
+            csvPath: './pypair.csv',         // 本地CSV路径
+            userPath: '../user/use.txt',     // 账号密码文件路径（每行格式：用户名\t密码）
+            startRow: 1,                     // 起始行数
+            colIndex: 1,                     // 检查的列数起点
+            maxRows: 30                      // 最大读取行数
+        };
+
+        let currentUser = "";
+        let levelsData = [];  // 从CSV解析出的所有关卡数据
+        let currentLevelIdx = 0;
+        let timerInterval = null;
+        let timeLeft = 120;   // 2分钟过关时间
+        let selectedCardVal = null; // 当前选中的待选字
+
+        // 1. 登录逻辑
+        async function login() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if(!u || !p) return alert("请输入姓名和密码！");
+
+            try {
+                const resp = await fetch(CONFIG.userPath);
+                const text = await resp.text();
+                const auth = text.split(/\r?\n/).some(line => {
+                    const ps = line.split('\t');
+                    return ps[0]?.trim() === u && ps[1]?.trim() === p;
+                });
+
+                if (auth) {
+                    currentUser = u;
+                    document.getElementById('login-box').classList.add('hidden');
+                    document.getElementById('game-container').classList.remove('hidden');
+                    await loadCSVLevels();
+                } else { 
+                    alert("登录失败：用户名或密码错误！"); 
+                }
+            } catch (e) { 
+                console.error(e);
+                alert("读取本地 user/use.txt 失败，请检查路径或网络权限。"); 
+            }
+        }
+
+        // 2. 从本地 CSV 加载并按4行为一组切分题库
+        async function loadCSVLevels() {
+            try {
+                const resp = await fetch(CONFIG.csvPath);
+                const text = await resp.text();
+                const rows = text.split(/\r?\n/).map(r => r.split(','));
+                
+                levelsData = [];
+                for (let i = CONFIG.startRow; i < rows.length; i += 4) {
+                    if (i + 3 >= rows.length) break;
+                    
+                    const row1 = rows[i].slice(1, 11).map(s => s?.trim()).filter(s => s);
+                    if (row1.length === 0) continue;
+
+                    const row2Base = rows[i+1].slice(1, 11).map(s => s?.trim());
+                    const row2Pos = rows[i+2].slice(1, 11).map(s => s?.trim());
+                    const row2Ans = rows[i+3].slice(1, 11).map(s => s?.trim());
+
+                    levelsData.push({
+                        row1: row1,          
+                        base: row2Base,      
+                        positions: row2Pos,  
+                        answers: row2Ans     
+                    });
+                }
+
+                if (levelsData.length === 0) {
+                    alert("未能从CSV中解析出有效关卡，请检查格式！");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("读取CSV文件出错，请确保同级目录下有 pypair.csv 文件。");
+            }
+        }
+
+        function startGame() {
+            if (levelsData.length === 0) return alert("当前没有加载到可用关卡！");
+            document.getElementById('instruction').classList.add('hidden');
+            document.getElementById('game-board').classList.remove('hidden');
+            loadLevel(currentLevelIdx);
+        }
+
+        // 3. 加载某一关卡到页面
+        function loadLevel(idx) {
+            if (idx >= levelsData.length) {
+                alert("恭喜您完成了所有关卡！");
+                location.reload();
+                return;
+            }
+
+            const data = levelsData[idx];
+            document.getElementById('level-indicator').innerText = `当前关卡: 第 ${idx + 1} 关`;
+
+            const r1Container = document.getElementById('row1-container');
+            r1Container.innerHTML = '';
+            data.row1.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerText = char;
+                card.onclick = () => {
+                    document.querySelectorAll('#row1-container .card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedCardVal = char;
+                };
+                r1Container.appendChild(card);
+            });
+
+            renderRows(data);
+            startTimer();
+        }
+
+        function renderRows(data) {
+            const r2Container = document.getElementById('row2-container');
+            const r3Container = document.getElementById('row3-container');
+            r2Container.innerHTML = '';
+            r3Container.innerHTML = '';
+
+            for (let i = 0; i < 5; i++) {
+                r2Container.appendChild(createSlotElement(data, i));
+            }
+            for (let i = 5; i < 10; i++) {
+                r3Container.appendChild(createSlotElement(data, i));
+            }
+        }
+
+        function createSlotElement(data, index) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.gap = '5px';
+            wrapper.style.margin = '5px';
+
+            const baseChar = data.base[index] || '';
+            const pos = (data.positions[index] || 'L').toUpperCase();
+
+            if (pos.includes('L')) {
+                const slotL = document.createElement('div');
+                slotL.className = 'slot';
+                slotL.dataset.col = index;
+                slotL.dataset.side = 'left';
+                slotL.onclick = handleSlotClick;
+                wrapper.appendChild(slotL);
+            }
+
+            const label = document.createElement('span');
+            label.innerText = baseChar;
+            label.style.fontSize = '26px';
+            label.style.fontWeight = 'bold';
+            label.style.color = '#880e4f';
+            wrapper.appendChild(label);
+
+            if (pos.includes('R')) {
+                const slotR = document.createElement('div');
+                slotR.className = 'slot';
+                slotR.dataset.col = index;
+                slotR.dataset.side = 'right';
+                slotR.onclick = handleSlotClick;
+                wrapper.appendChild(slotR);
+            }
+
+            return wrapper;
+        }
+
+        function handleSlotClick() {
+            if (!selectedCardVal) {
+                // 如果没有选汉字却点槽位，可触发错误音效提示
+                document.getElementById('snd-wrong').currentTime = 0;
+                document.getElementById('snd-wrong').play().catch(e => {});
+                alert("请先点击上方“第一排”选择一个汉字！");
+                return;
+            }
+            this.innerText = selectedCardVal;
+            this.classList.add('filled');
+            
+            // 填入成功播放 melt 音效
+            document.getElementById('snd-melt').currentTime = 0;
+            document.getElementById('snd-melt').play().catch(e => {});
+
+            selectedCardVal = null;
+            document.querySelectorAll('#row1-container .card').forEach(c => c.classList.remove('selected'));
+        }
+
+        // 4. 2分钟倒计时
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 120;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('snd-wrong').currentTime = 0;
+                    document.getElementById('snd-wrong').play().catch(e => {});
+                    alert("时间到！再接再厉哦！");
+                    loadLevel(currentLevelIdx);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+            const s = String(timeLeft % 60).padStart(2, '0');
+            document.getElementById('timer').innerText = `剩余时间: ${m}:${s}`;
+        }
+
+        // 5. 检查答案与过关
+        function checkAnswers() {
+            clearInterval(timerInterval);
+            // 播放过关音效 melt
+            document.getElementById('snd-melt').currentTime = 0;
+            document.getElementById('snd-melt').play().catch(e => {});
+
+            document.getElementById('game-board').classList.add('hidden');
+            document.getElementById('finish-screen').classList.remove('hidden');
+
+            const praises = [
+                "太厉害了！你是最棒的小汉字专家！🌟",
+                "全对啦！老师为你竖起大拇指！👍",
+                "哇塞，进步神速，继续保持哦！🎉",
+                "聪明的宝贝，今天的汉字难不倒你！🎈"
+            ];
+            document.getElementById('praise-text').innerText = praises[Math.floor(Math.random() * praises.length)];
+        }
+
+        // 6. 进入下一关
+        function nextLevel() {
+            currentLevelIdx++;
+            document.getElementById('finish-screen').classList.add('hidden');
+            document.getElementById('game-board').classList.remove('hidden');
+            loadLevel(currentLevelIdx);
+        }
+    </script>
+</body>
+</html>
