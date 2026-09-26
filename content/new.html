@@ -262,88 +262,104 @@
 
         // 解析CSV：严格按4行为一组，并根据位置和答案完整列出所有组合
         async function loadCSVLevels() {
-            try {
-                const resp = await fetch(CONFIG.csvPath);
-                const text = await resp.text();
-                const rows = text.split(/\r?\n/).map(r => r.split(','));
+    try {
+        const resp = await fetch(CONFIG.csvPath);
+        if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`);
+        
+        const text = await resp.text();
+        // 按行切割，并过滤掉完全没有内容的空白行
+        const rows = text.split(/\r?\n/).map(r => r.split(','));
+        
+        pagesData = [];
+        
+        for (let i = CONFIG.startRow; i < rows.length; i += 4) {
+            // 如果剩余行数不足 4 行，直接结束循环
+            if (i + 3 >= rows.length) break;
+            
+            // 第一行：待选汉字（排除空值、空格和表头“待选”）
+            const row1 = rows[i].map(s => s?.trim()).filter(s => s && s !== '待选');
+            if (row1.length === 0) continue;
+
+            // 获取后续三行的数据并进行基础清洗
+            const row2Base = (rows[i+1] || []).map(s => s?.trim() || '');
+            const row2Pos  = (rows[i+2] || []).map(s => s?.trim() || '');
+            const row2Ans  = (rows[i+3] || []).map(s => s?.trim() || '');
+
+            // 找出所有有效的固定字列（排除空列或固定的表头名称如“固定”、“位置”、“答案”）
+            let validCols = [];
+            for (let c = 0; c < row2Base.length; c++) {
+                const base = row2Base[c];
+                if (base && base !== '固定' && base !== '位置' && base !== '答案') {
+                    validCols.push(c);
+                }
+            }
+
+            // 每页安排 2 个固定字
+            for (let j = 0; j < validCols.length; j += 2) {
+                const subItems = [];
                 
-                pagesData = [];
-                for (let i = CONFIG.startRow; i < rows.length; i += 4) {
-                    if (i + 3 >= rows.length) break;
+                for (let k = j; k < j + 2 && k < validCols.length; k++) {
+                    const c = validCols[k];
+                    const base = row2Base[c];
+                    const pos = (row2Pos[c] || 'L').toUpperCase();
+                    const answersStr = row2Ans[c] || '';
                     
-                    // 第一行：待选汉字（排除空值）
-                    const row1 = rows[i].map(s => s?.trim()).filter(s => s && s !== '待选');
-                    if (row1.length === 0) continue;
+                    // 解析答案（支持中英文逗号分隔）
+                    const ansList = answersStr.split(/[,，]/).map(s => s.trim()).filter(s => s);
 
-                    const row2Base = rows[i+1].map(s => s?.trim());
-                    const row2Pos = rows[i+2].map(s => s?.trim());
-                    const row2Ans = rows[i+3].map(s => s?.trim());
-
-                    // 找出所有有效的固定字列（排除空列或固定的表头名称如“固定”、“位置”、“答案”）
-                    let validCols = [];
-                    for (let c = 0; c < row2Base.length; c++) {
-                        const base = row2Base[c];
-                        if (base && base !== '固定' && base !== '位置' && base !== '答案') {
-                            validCols.push(c);
+                    // 根据位置（L, R, LR）和答案列表生成所有的组合项
+                    let slotCombinations = [];
+                    
+                    if (pos === 'LR') {
+                        // 如果明确声明了双向(LR)，且有填入答案
+                        if (ansList.length > 0) {
+                            ansList.forEach((ans, idx) => {
+                                // 奇数索引分给 L，偶数分给 R（或根据您的项目需求自定）
+                                slotCombinations.push({ ans: ans, side: (idx % 2 === 0) ? 'L' : 'R' });
+                            });
+                        } else {
+                            // 如果没有答案，默认补齐左右两个空白槽位
+                            slotCombinations.push({ ans: '', side: 'L' });
+                            slotCombinations.push({ ans: '', side: 'R' });
+                        }
+                    } else {
+                        // 单向情况（L 或 R）
+                        if (ansList.length > 0) {
+                            ansList.forEach(ans => {
+                                slotCombinations.push({ ans: ans, side: pos });
+                            });
+                        } else {
+                            slotCombinations.push({ ans: '', side: pos });
                         }
                     }
 
-                    // 每页安排2个固定字
-                    for (let j = 0; j < validCols.length; j += 2) {
-                        const subItems = [];
-                        for (let k = j; k < j + 2 && k < validCols.length; k++) {
-                            const c = validCols[k];
-                            const base = row2Base[c];
-                            const pos = (row2Pos[c] || 'L').toUpperCase();
-                            const answersStr = row2Ans[c] || '';
-                            
-                            // 解析答案（支持逗号分隔多个）
-                            const ansList = answersStr.split(/[,，]/).map(s => s.trim()).filter(s => s);
-
-                            // 根据位置（L, R, LR）和答案列表生成所有的组合项
-                            let slotCombinations = [];
-                            if (pos === 'LR') {
-                                // 如果是LR，针对每个答案同时生成左括号和右括号组合，或者按需求铺开
-                                ansList.forEach((ans, idx) => {
-                                    slotCombinations.push({ ans: ans, side: (idx % 2 === 0) ? 'L' : 'R' });
-                                });
-                                // 如果答案少于位置需求，补足默认
-                                if(ansList.length === 0) {
-                                    slotCombinations.push({ ans: '', side: 'L' });
-                                    slotCombinations.push({ ans: '', side: 'R' });
-                                }
-                            } else {
-                                ansList.forEach(ans => {
-                                    slotCombinations.push({ ans: ans, side: pos });
-                                });
-                                if(ansList.length === 0) {
-                                    slotCombinations.push({ ans: '', side: pos });
-                                }
-                            }
-
-                            subItems.push({
-                                base: base,
-                                combinations: slotCombinations
-                            });
-                        }
-
-                        if (subItems.length > 0) {
-                            pagesData.push({
-                                row1: row1,
-                                items: subItems 
-                            });
-                        }
-                    }
+                    subItems.push({
+                        base: base,
+                        combinations: slotCombinations
+                    });
                 }
 
-                if (pagesData.length === 0) {
-                    alert("未能从CSV中解析出有效关卡，请检查格式！");
+                // 只有当这一页成功组装了固定字项时，才推入关卡数据
+                if (subItems.length > 0) {
+                    pagesData.push({
+                        row1: row1,
+                        items: subItems 
+                    });
                 }
-            } catch (e) {
-                console.error(e);
-                alert("读取CSV文件出错，请确保同级目录下有正确格式的CSV文件。");
             }
         }
+
+        if (pagesData.length === 0) {
+            alert("未能从CSV中解析出有效关卡，请检查格式！");
+        } else {
+            console.log(`成功加载了 ${pagesData.length} 页关卡数据。`, pagesData);
+        }
+    } catch (e) {
+        console.error("解析CSV失败:", e);
+        alert("读取CSV文件出错，请确保同级目录下有正确格式的CSV文件。");
+    }
+}
+
 
         function startGame() {
             if (pagesData.length === 0) return alert("当前没有加载到可用关卡！");
