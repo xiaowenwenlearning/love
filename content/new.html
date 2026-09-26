@@ -23,8 +23,8 @@
             box-shadow: 0 12px 40px rgba(0,0,0,0.2);
             margin-top: 30px;
             text-align: center;
-            max-width: 950px;
-            width: 92%;
+            max-width: 1000px;
+            width: 95%;
         }
 
         .hidden { display: none !important; }
@@ -65,31 +65,31 @@
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             padding: 5px 0;
         }
 
-        /* 第二、三排组合卡片：居中均匀分布 */
+        /* 第二、三排组合卡片：居中均匀分布，允许换行展示所有组合 */
         .card-container-row23 {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             padding: 5px 0;
         }
 
         /* 汉字卡片/槽位样式 */
         .slot, .card {
-            width: 65px;
-            height: 65px;
+            width: 60px;
+            height: 60px;
             background: #fff;
             border: 3px solid #ff4081;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: 26px;
             font-weight: bold;
             color: #333;
             cursor: pointer;
@@ -98,7 +98,7 @@
             transition: all 0.2s;
         }
         .card.selected { background: #ffeb3b; border-color: #fbc02d; transform: translateY(-3px); }
-        .slot { background: #f8bbd0; border-style: dashed; color: #880e4f; }
+        .slot { background: #f8bbd0; border-style: dashed; color: #880e4f; min-width: 60px; }
         .slot.filled { background: #e1bee7; border-style: solid; border-color: #8e24aa; }
 
         /* 组词组合卡片样式（括号与固定字） */
@@ -108,10 +108,10 @@
             background: #fff;
             border: 2px solid #ab47bc;
             border-radius: 12px;
-            padding: 8px 14px;
-            gap: 10px;
+            padding: 6px 12px;
+            gap: 8px;
             box-shadow: 0 3px 0 #7b1fa2;
-            font-size: 26px;
+            font-size: 24px;
             font-weight: bold;
             color: #4a148c;
         }
@@ -171,13 +171,13 @@
     <div id="game-container" class="hidden">
         <div id="instruction">
             <h2 style="color:#d81b60;">欢迎来到闯关游戏！</h2>
-            <p style="color:#555; font-size: 18px;">规则：在2分钟内完成当前页的组词，做完所有5页后才会进行最终结算！</p>
+            <p style="color:#555; font-size: 18px;">规则：在2分钟内完成当前页的组词，做完所有页面后才会进行最终结算！</p>
             <button class="btn" style="font-size:24px; padding:15px 40px;" onclick="startGame()">开始闯关 GO!</button>
         </div>
 
         <div id="game-board" class="hidden">
             <div class="hud">
-                <span id="level-indicator">当前进度: 第 1 / 5 页</span>
+                <span id="level-indicator">当前进度: 第 1 / 1 页</span>
                 <span id="timer">剩余时间: 02:00</span>
             </div>
 
@@ -207,7 +207,7 @@
             <div class="avatar-container">
                 <span>🐱</span><span>🦄</span><span>🌸</span><span>⭐</span><span>🍦</span>
             </div>
-            <h1 style="color:#e91e63; font-size: 36px;">🎉 太棒了！全部5页顺利通关！ 🎉</h1>
+            <h1 style="color:#e91e63; font-size: 36px;">🎉 太棒了！全部关卡顺利通关！ 🎉</h1>
             <p id="praise-text" style="font-size: 22px; color: #880e4f; font-weight: bold; margin: 15px 0;"></p>
             <button class="btn" style="background: #4caf50; font-size: 22px;" onclick="location.reload()">再玩一次 🔄</button>
         </div>
@@ -223,11 +223,11 @@
             userPath: '../user/use.txt',     
             startRow: 1,                     
             colIndex: 1,                     
-            maxRows: 13                      
+            maxRows: 30                      
         };
 
         let currentUser = "";
-        let pagesData = [];  // 共5页
+        let pagesData = [];  
         let currentPageIdx = 0;
         let timerInterval = null;
         let timeLeft = 120;   
@@ -260,6 +260,7 @@
             }
         }
 
+        // 解析CSV：严格按4行为一组，并根据位置和答案完整列出所有组合
         async function loadCSVLevels() {
             try {
                 const resp = await fetch(CONFIG.csvPath);
@@ -270,27 +271,59 @@
                 for (let i = CONFIG.startRow; i < rows.length; i += 4) {
                     if (i + 3 >= rows.length) break;
                     
-                    const row1 = rows[i].slice(1, 11).map(s => s?.trim()).filter(s => s);
+                    // 第一行：待选汉字（排除空值）
+                    const row1 = rows[i].map(s => s?.trim()).filter(s => s && s !== '待选');
                     if (row1.length === 0) continue;
 
-                    const row2Base = rows[i+1].slice(1, 11).map(s => s?.trim());
-                    const row2Pos = rows[i+2].slice(1, 11).map(s => s?.trim());
-                    const row2Ans = rows[i+3].slice(1, 11).map(s => s?.trim());
+                    const row2Base = rows[i+1].map(s => s?.trim());
+                    const row2Pos = rows[i+2].map(s => s?.trim());
+                    const row2Ans = rows[i+3].map(s => s?.trim());
 
-                    // 10个固定字按每页2个，刚好分为 5 页
-                    for (let col = 0; col < 10; col += 2) {
+                    // 找出所有有效的固定字列（排除空列或固定的表头名称如“固定”、“位置”、“答案”）
+                    let validCols = [];
+                    for (let c = 0; c < row2Base.length; c++) {
+                        const base = row2Base[c];
+                        if (base && base !== '固定' && base !== '位置' && base !== '答案') {
+                            validCols.push(c);
+                        }
+                    }
+
+                    // 每页安排2个固定字
+                    for (let j = 0; j < validCols.length; j += 2) {
                         const subItems = [];
-                        for (let c = col; c < col + 2 && c < 10; c++) {
+                        for (let k = j; k < j + 2 && k < validCols.length; k++) {
+                            const c = validCols[k];
                             const base = row2Base[c];
-                            if (!base) continue;
                             const pos = (row2Pos[c] || 'L').toUpperCase();
                             const answersStr = row2Ans[c] || '';
+                            
+                            // 解析答案（支持逗号分隔多个）
                             const ansList = answersStr.split(/[,，]/).map(s => s.trim()).filter(s => s);
+
+                            // 根据位置（L, R, LR）和答案列表生成所有的组合项
+                            let slotCombinations = [];
+                            if (pos === 'LR') {
+                                // 如果是LR，针对每个答案同时生成左括号和右括号组合，或者按需求铺开
+                                ansList.forEach((ans, idx) => {
+                                    slotCombinations.push({ ans: ans, side: (idx % 2 === 0) ? 'L' : 'R' });
+                                });
+                                // 如果答案少于位置需求，补足默认
+                                if(ansList.length === 0) {
+                                    slotCombinations.push({ ans: '', side: 'L' });
+                                    slotCombinations.push({ ans: '', side: 'R' });
+                                }
+                            } else {
+                                ansList.forEach(ans => {
+                                    slotCombinations.push({ ans: ans, side: pos });
+                                });
+                                if(ansList.length === 0) {
+                                    slotCombinations.push({ ans: '', side: pos });
+                                }
+                            }
 
                             subItems.push({
                                 base: base,
-                                pos: pos,
-                                answers: ansList
+                                combinations: slotCombinations
                             });
                         }
 
@@ -339,10 +372,10 @@
                 r1Container.appendChild(card);
             });
 
-            // 第二排：第1个固定字及所有组合
+            // 渲染第二排
             renderRowWithSlots('row2-container', 'row2-title', pageData.items[0], '第二排');
             
-            // 第三排：第2个固定字及所有组合
+            // 渲染第三排
             if (pageData.items[1]) {
                 renderRowWithSlots('row3-container', 'row3-title', pageData.items[1], '第三排');
             } else {
@@ -356,26 +389,21 @@
             container.innerHTML = '';
             document.getElementById(titleId).innerText = `${rowName}组词（固定字：${itemData.base}）`;
 
-            itemData.answers.forEach((ans, ansIdx) => {
-                const pos = itemData.pos;
-                let actualPos = pos;
-                if (pos === 'LR') {
-                    actualPos = (ansIdx % 2 === 0) ? 'L' : 'R';
-                }
-
+            // 遍历该固定字所有的组合，生成对应的括号+固定字卡片
+            itemData.combinations.forEach(combo => {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'word-group-box';
 
                 const slot = document.createElement('div');
                 slot.className = 'slot';
                 slot.dataset.base = itemData.base;
-                slot.dataset.targetAnswer = ans;
+                slot.dataset.expected = combo.ans;
                 slot.onclick = handleSlotClick;
 
                 const baseSpan = document.createElement('span');
                 baseSpan.innerText = itemData.base;
 
-                if (actualPos === 'L') {
+                if (combo.side === 'L') {
                     groupDiv.appendChild(slot);
                     groupDiv.appendChild(baseSpan);
                 } else {
@@ -427,7 +455,7 @@
             document.getElementById('timer').innerText = `剩余时间: ${m}:${s}`;
         }
 
-        // 点击进入下一页，直到完成全部5页后才进入总结算
+        // 点击进入下一页，只有做完所有页面后才进入总结算
         function nextPage() {
             currentPageIdx++;
             if (currentPageIdx < pagesData.length) {
@@ -435,7 +463,7 @@
                 document.getElementById('snd-melt').play().catch(e => {});
                 loadPage(currentPageIdx);
             } else {
-                // 全部5页做完后，触发最终总结算
+                // 全部页面做完后，触发最终总结算
                 clearInterval(timerInterval);
                 document.getElementById('snd-melt').currentTime = 0;
                 document.getElementById('snd-melt').play().catch(e => {});
@@ -444,7 +472,7 @@
                 document.getElementById('finish-screen').classList.remove('hidden');
 
                 const praises = [
-                    "太厉害了！你顺利完成了全部5页闯关，是最棒的小汉字专家！🌟",
+                    "太厉害了！你顺利完成了全部闯关，是最棒的小汉字专家！🌟",
                     "全部通关啦！老师为你竖起大拇指！👍",
                     "哇塞，全部练习完美搞定，进步神速！🎉",
                     "聪明的宝贝，所有的汉字都难不倒你！🎈"
