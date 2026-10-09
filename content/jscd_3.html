@@ -112,7 +112,7 @@
         let selectedChars = "";
         let selectedCards = [];
         let attemptCount = 0;
-        let timer = 45;
+        let timer = 55;
         let timerInterval;
         let wrongWords = [];
         let userName = "";
@@ -260,7 +260,7 @@
         }
 
         function resetTimer() {
-            timer = 45; updateTimerUI();
+            timer = 55; updateTimerUI();
             clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 timer--; updateTimerUI();
